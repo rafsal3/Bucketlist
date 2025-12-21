@@ -8,6 +8,7 @@ import '../widgets/add_item_modal.dart';
 import '../widgets/checklist_item_card.dart';
 import '../widgets/progress_ring.dart';
 import '../theme/app_theme.dart';
+import 'manage_categories_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -64,6 +65,25 @@ class _HomeScreenState extends State<HomeScreen> {
                       ProgressRing(
                         progress: appState.overallProgress,
                         size: 70,
+                      ),
+                      SizedBox(width: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.surface,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: IconButton(
+                          icon: Icon(Icons.tune, color: AppTheme.textSecondary),
+                          tooltip: 'Manage Categories',
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ManageCategoriesScreen(),
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ],
                   ),
@@ -226,13 +246,22 @@ class _HomeScreenState extends State<HomeScreen> {
       items = appState.getAllItems();
     } else {
       // Specific category tab
-      final categoryId = appState.categories[_currentTabIndex - 1].id;
-      items = appState.getItemsForCategory(categoryId);
+      if (_currentTabIndex - 1 < appState.categories.length) {
+        final categoryId = appState.categories[_currentTabIndex - 1].id;
+        items = appState.getItemsForCategory(categoryId);
+      } else {
+        // Tab index out of range (category deleted), fallback to All
+        items = appState.getAllItems();
+        // create a microtask to update state if needed, but for build just render All
+        // We can't call setState here.
+        // Just fail safe to All items.
+      }
     }
 
     // Drag and drop is definitely easier when viewing a specific category
     // For "All" tab, reordering is disabled because items are mixed
-    final bool enableReorder = _currentTabIndex != 0;
+    final bool enableReorder = _currentTabIndex != 0 &&
+        (_currentTabIndex - 1 < appState.categories.length);
 
     if (items.isEmpty) {
       return Center(

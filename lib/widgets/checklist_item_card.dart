@@ -271,121 +271,121 @@ class ChecklistItemCard extends StatelessWidget {
       }
     }
 
-    return GestureDetector(
-      onTap: () => _showItemDetails(context),
-      child: Container(
-        margin: EdgeInsets.only(bottom: 12),
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Checkbox
-            GestureDetector(
-              onTap: () => appState.toggleItem(item.id),
-              child: Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: item.isCompleted
-                        ? AppTheme.accent
-                        : AppTheme.textSecondary.withOpacity(0.3),
-                    width: 2,
-                  ),
-                  color:
-                      item.isCompleted ? AppTheme.accent : Colors.transparent,
+    Widget cardContent = Container(
+      margin: EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Checkbox
+          GestureDetector(
+            onTap: () => appState.toggleItem(item.id),
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: item.isCompleted
+                      ? AppTheme.accent
+                      : AppTheme.textSecondary.withOpacity(0.3),
+                  width: 2,
                 ),
-                child: item.isCompleted
-                    ? Icon(
-                        Icons.check,
-                        size: 16,
-                        color: Colors.white,
-                      )
-                    : null,
+                color: item.isCompleted ? AppTheme.accent : Colors.transparent,
+              ),
+              child: item.isCompleted
+                  ? Icon(
+                      Icons.check,
+                      size: 16,
+                      color: Colors.white,
+                    )
+                  : null,
+            ),
+          ),
+          SizedBox(width: 12),
+
+          // Image thumbnail
+          if (item.imageUrl != null) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                item.imageUrl!,
+                width: 50,
+                height: 75,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    SizedBox(width: 0, height: 0),
               ),
             ),
             SizedBox(width: 12),
-
-            // Image thumbnail
-            if (item.imageUrl != null) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  item.imageUrl!,
-                  width: 50,
-                  height: 75,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) =>
-                      SizedBox(width: 0, height: 0),
-                ),
-              ),
-              SizedBox(width: 12),
-            ],
-
-            // Item text and category
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.text,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: item.isCompleted
-                          ? AppTheme.textSecondary
-                          : AppTheme.textPrimary,
-                      decoration: item.isCompleted
-                          ? TextDecoration.lineThrough
-                          : TextDecoration.none,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        categoryIcon,
-                        style: TextStyle(fontSize: 12),
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        categoryLabel,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Drag Handle
-            if (enableDrag && index != null) ...[
-              ReorderableDragStartListener(
-                index: index!,
-                child: Padding(
-                  padding: EdgeInsets.only(left: 12),
-                  child: Icon(Icons.drag_indicator,
-                      color: AppTheme.textSecondary.withOpacity(0.5)),
-                ),
-              ),
-            ],
           ],
-        ),
+
+          // Item text and category
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.text,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: item.isCompleted
+                        ? AppTheme.textSecondary
+                        : AppTheme.textPrimary,
+                    decoration: item.isCompleted
+                        ? TextDecoration.lineThrough
+                        : TextDecoration.none,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      categoryIcon,
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      categoryLabel,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
+
+    // Add tap handling
+    Widget tappableCard = GestureDetector(
+      onTap: () => _showItemDetails(context),
+      child: cardContent,
+    );
+
+    // Add drag handling if enabled
+    if (enableDrag && index != null) {
+      return ReorderableDelayedDragStartListener(
+        index: index!,
+        child: tappableCard,
+      );
+    }
+
+    return tappableCard;
   }
 }

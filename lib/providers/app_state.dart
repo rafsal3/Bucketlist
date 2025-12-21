@@ -159,6 +159,16 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void reorderCategories(int oldIndex, int newIndex) {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final category = _categories.removeAt(oldIndex);
+    _categories.insert(newIndex, category);
+    _saveData();
+    notifyListeners();
+  }
+
   void toggleItem(String itemId) {
     for (var category in _categories) {
       final itemIndex = category.items.indexWhere((item) => item.id == itemId);
