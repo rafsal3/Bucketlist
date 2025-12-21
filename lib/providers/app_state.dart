@@ -127,14 +127,34 @@ class AppState extends ChangeNotifier {
 
     if (categoryId != null) {
       final category = _categories.firstWhere((cat) => cat.id == categoryId);
-      category.items.add(item);
+      category.items.insert(0, item);
     } else {
       // For uncategorized items, we'll add them to a special handling
       // They will be stored in the first category but marked as uncategorized
       if (_categories.isNotEmpty) {
-        _categories.first.items.add(item);
+        _categories.first.items.insert(0, item);
       }
     }
+    _saveData();
+    notifyListeners();
+  }
+
+  void reorderItems(String categoryId, int oldIndex, int newIndex) {
+    // Find the category
+    final categoryIndex = _categories.indexWhere((cat) => cat.id == categoryId);
+    if (categoryIndex == -1) return;
+
+    final category = _categories[categoryIndex];
+
+    // Adjust newIndex if moving down
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+
+    // Perform reorder
+    final item = category.items.removeAt(oldIndex);
+    category.items.insert(newIndex, item);
+
     _saveData();
     notifyListeners();
   }

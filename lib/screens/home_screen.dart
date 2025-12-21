@@ -231,6 +231,10 @@ class _HomeScreenState extends State<HomeScreen> {
       items = appState.getItemsForCategory(categoryId);
     }
 
+    // Drag and drop is definitely easier when viewing a specific category
+    // For "All" tab, reordering is disabled because items are mixed
+    final bool enableReorder = _currentTabIndex != 0;
+
     if (items.isEmpty) {
       return Center(
         child: Column(
@@ -262,14 +266,47 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    return ListView.builder(
+    if (!enableReorder) {
+      // Standard list for "All" tab (no reordering)
+      return ListView.builder(
+        padding: EdgeInsets.symmetric(horizontal: 24),
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final item = items[index];
+          return _ItemCard(
+            key: ValueKey(item.id),
+            item: item,
+            appState: appState,
+            enableDrag: false,
+          );
+        },
+      );
+    }
+
+    return ReorderableListView.builder(
       padding: EdgeInsets.symmetric(horizontal: 24),
+      buildDefaultDragHandles: false, // We use custom drag handles
       itemCount: items.length,
+      onReorder: (oldIndex, newIndex) {
+        if (_currentTabIndex != 0) {
+          final categoryId = appState.categories[_currentTabIndex - 1].id;
+          appState.reorderItems(categoryId, oldIndex, newIndex);
+        }
+      },
       itemBuilder: (context, index) {
         final item = items[index];
         return _ItemCard(
+          key: ValueKey(item.id),
           item: item,
           appState: appState,
+          enableDrag: true,
+          index: index,
+        );
+      },
+      proxyDecorator: (child, index, animation) {
+        return Material(
+          color: Colors.transparent,
+          child: child, // Keep the same look while dragging
         );
       },
     );
@@ -279,11 +316,16 @@ class _HomeScreenState extends State<HomeScreen> {
 class _ItemCard extends StatelessWidget {
   final ChecklistItem item;
   final AppState appState;
+  final bool enableDrag;
+  final int? index;
 
   const _ItemCard({
+    Key? key,
     required this.item,
     required this.appState,
-  });
+    this.enableDrag = false,
+    this.index,
+  }) : super(key: key);
 
   void _showItemOptions(BuildContext context) {
     showModalBottomSheet(
@@ -680,6 +722,18 @@ class _ItemCard extends StatelessWidget {
                 ],
               ),
             ),
+
+            // Drag Handle
+            if (enableDrag && index != null) ...[
+              ReorderableDragStartListener(
+                index: index!,
+                child: Padding(
+                  padding: EdgeInsets.only(left: 12),
+                  child: Icon(Icons.drag_indicator,
+                      color: AppTheme.textSecondary.withOpacity(0.5)),
+                ),
+              ),
+            ],
           ],
         ),
       ),
