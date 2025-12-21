@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../services/tmdb_service.dart';
 import '../models/tmdb_movie.dart';
-import '../theme/app_theme.dart';
 
 class AddMovieModal extends StatefulWidget {
   final String categoryId;
@@ -67,7 +66,7 @@ class _AddMovieModalState extends State<AddMovieModal> {
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.all(24),
@@ -78,7 +77,7 @@ class _AddMovieModalState extends State<AddMovieModal> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppTheme.textSecondary.withOpacity(0.3),
+              color: Theme.of(context).dividerColor,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -115,9 +114,11 @@ class _AddMovieModalState extends State<AddMovieModal> {
               SizedBox(width: 12),
               IconButton(
                 onPressed: _searchMovies,
-                icon: Icon(Icons.send, color: AppTheme.accent),
+                icon: Icon(Icons.send,
+                    color: Theme.of(context).colorScheme.primary),
                 style: IconButton.styleFrom(
-                  backgroundColor: AppTheme.accent.withOpacity(0.1),
+                  backgroundColor:
+                      Theme.of(context).colorScheme.primary.withOpacity(0.1),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
@@ -140,11 +141,18 @@ class _AddMovieModalState extends State<AddMovieModal> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.movie_creation_outlined,
-                                    size: 64, color: AppTheme.textSecondary),
+                                    size: 64,
+                                    color: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.color),
                                 SizedBox(height: 16),
                                 Text('Search for your favorite movies',
                                     style: TextStyle(
-                                        color: AppTheme.textSecondary)),
+                                        color: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.color)),
                               ],
                             ),
                           )
@@ -194,7 +202,9 @@ class _AddMovieModalState extends State<AddMovieModal> {
                                 ),
                                 trailing: IconButton(
                                   icon: Icon(Icons.add_circle_outline,
-                                      color: AppTheme.accent),
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary),
                                   onPressed: () => _addMovie(movie),
                                 ),
                                 onTap: () => _addMovie(movie),

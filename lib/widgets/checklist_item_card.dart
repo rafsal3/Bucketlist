@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+
 import '../models/category_model.dart';
 import '../providers/app_state.dart';
 
@@ -27,7 +27,7 @@ class ChecklistItemCard extends StatelessWidget {
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: EdgeInsets.all(24),
@@ -42,7 +42,7 @@ class ChecklistItemCard extends StatelessWidget {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    color: Theme.of(context).dividerColor,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -88,7 +88,7 @@ class ChecklistItemCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).textTheme.titleLarge?.color,
                   ),
                 ),
                 SizedBox(height: 8),
@@ -96,14 +96,14 @@ class ChecklistItemCard extends StatelessWidget {
                   item.description!,
                   style: TextStyle(
                     fontSize: 16,
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).textTheme.bodyMedium?.color,
                     height: 1.5,
                   ),
                 ),
                 SizedBox(height: 24),
               ],
 
-              Divider(color: AppTheme.textSecondary.withOpacity(0.1)),
+              Divider(color: Theme.of(context).dividerColor),
               SizedBox(height: 8),
 
               // Actions List
@@ -113,14 +113,15 @@ class ChecklistItemCard extends StatelessWidget {
                 leading: Container(
                   padding: EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppTheme.accent.withOpacity(0.1),
+                    color:
+                        Theme.of(context).colorScheme.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     item.isCompleted
                         ? Icons.check_circle_outline
                         : Icons.radio_button_unchecked,
-                    color: AppTheme.accent,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
                 title: Text(
@@ -139,11 +140,15 @@ class ChecklistItemCard extends StatelessWidget {
                 leading: Container(
                   padding: EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppTheme.textPrimary.withOpacity(0.1),
+                    color: Theme.of(context)
+                        .textTheme
+                        .bodyLarge
+                        ?.color
+                        ?.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child:
-                      Icon(Icons.folder_outlined, color: AppTheme.textPrimary),
+                  child: Icon(Icons.folder_outlined,
+                      color: Theme.of(context).textTheme.bodyLarge?.color),
                 ),
                 title: Text(
                   'Move to Category',
@@ -197,7 +202,7 @@ class ChecklistItemCard extends StatelessWidget {
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: EdgeInsets.all(24),
@@ -210,7 +215,7 @@ class ChecklistItemCard extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppTheme.textSecondary.withOpacity(0.3),
+                  color: Theme.of(context).dividerColor,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -275,7 +280,7 @@ class ChecklistItemCard extends StatelessWidget {
       margin: EdgeInsets.only(bottom: 12),
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -297,17 +302,19 @@ class ChecklistItemCard extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: item.isCompleted
-                      ? AppTheme.accent
-                      : AppTheme.textSecondary.withOpacity(0.3),
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).disabledColor,
                   width: 2,
                 ),
-                color: item.isCompleted ? AppTheme.accent : Colors.transparent,
+                color: item.isCompleted
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.transparent,
               ),
               child: item.isCompleted
                   ? Icon(
                       Icons.check,
                       size: 16,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onPrimary,
                     )
                   : null,
             ),
@@ -341,8 +348,8 @@ class ChecklistItemCard extends StatelessWidget {
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                     color: item.isCompleted
-                        ? AppTheme.textSecondary
-                        : AppTheme.textPrimary,
+                        ? Theme.of(context).disabledColor
+                        : Theme.of(context).textTheme.bodyLarge?.color,
                     decoration: item.isCompleted
                         ? TextDecoration.lineThrough
                         : TextDecoration.none,
@@ -360,7 +367,7 @@ class ChecklistItemCard extends StatelessWidget {
                       categoryLabel,
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
                       ),
                     ),
                   ],

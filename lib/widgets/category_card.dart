@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/category_model.dart';
-import '../theme/app_theme.dart';
 
 class CategoryCard extends StatelessWidget {
   final Category category;
@@ -54,8 +53,10 @@ class CategoryCard extends StatelessWidget {
                 child: LinearProgressIndicator(
                   value: category.progress,
                   minHeight: 6,
-                  backgroundColor: AppTheme.accentLight,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accent),
+                  backgroundColor:
+                      Theme.of(context).colorScheme.primaryContainer,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                      Theme.of(context).colorScheme.primary),
                 ),
               ),
             ],

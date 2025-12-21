@@ -15,11 +15,17 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => AppState(),
-      child: MaterialApp(
-        title: 'My Bucket List',
-        theme: AppTheme.lightTheme,
-        debugShowCheckedModeBanner: false,
-        home: const HomeScreen(),
+      child: Consumer<AppState>(
+        builder: (context, appState, _) {
+          return MaterialApp(
+            title: 'My Bucket List',
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: appState.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            debugShowCheckedModeBanner: false,
+            home: const HomeScreen(),
+          );
+        },
       ),
     );
   }

@@ -7,7 +7,7 @@ import '../widgets/add_category_modal.dart';
 import '../widgets/add_item_modal.dart';
 import '../widgets/checklist_item_card.dart';
 import '../widgets/progress_ring.dart';
-import '../theme/app_theme.dart';
+
 import 'manage_categories_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -31,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Consumer<AppState>(
           builder: (context, appState, child) {
@@ -67,13 +67,39 @@ class _HomeScreenState extends State<HomeScreen> {
                         size: 70,
                       ),
                       SizedBox(width: 8),
+                      // Theme Toggle
                       Container(
                         decoration: BoxDecoration(
-                          color: AppTheme.surface,
+                          color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Theme.of(context).dividerColor,
+                          ),
                         ),
                         child: IconButton(
-                          icon: Icon(Icons.tune, color: AppTheme.textSecondary),
+                          icon: Icon(
+                            appState.isDarkMode
+                                ? Icons.light_mode_rounded
+                                : Icons.dark_mode_rounded,
+                            color: Theme.of(context).iconTheme.color,
+                          ),
+                          tooltip: 'Toggle Theme',
+                          onPressed: () {
+                            appState.toggleTheme();
+                          },
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border:
+                              Border.all(color: Theme.of(context).dividerColor),
+                        ),
+                        child: IconButton(
+                          icon: Icon(Icons.tune,
+                              color: Theme.of(context).iconTheme.color),
                           tooltip: 'Manage Categories',
                           onPressed: () {
                             Navigator.push(
@@ -96,7 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: ListView(
                     scrollDirection: Axis.horizontal,
                     children: [
-                      _buildTabChip('All', '📋', 0),
+                      _buildTabChip('All', '📋', 0, context),
                       SizedBox(width: 8),
                       ...appState.categories.asMap().entries.map((entry) {
                         final index =
@@ -108,6 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             category.name,
                             category.icon,
                             index,
+                            context,
                           ),
                         );
                       }).toList(),
@@ -140,8 +167,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 builder: (context) => AddCategoryModal(),
               );
             },
-            backgroundColor: AppTheme.surface,
-            child: Icon(Icons.folder_outlined, color: AppTheme.accent),
+            backgroundColor: Theme.of(context).cardColor,
+            child: Icon(Icons.folder_outlined,
+                color: Theme.of(context).colorScheme.primary),
           ),
           SizedBox(height: 12),
           // Add Item button
@@ -173,13 +201,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   }
                 },
-                backgroundColor: AppTheme.accent,
+                backgroundColor: Theme.of(context).colorScheme.primary,
                 icon: Icon(isMoviesCategory ? Icons.movie : Icons.add,
-                    color: Colors.white),
+                    color: Theme.of(context).colorScheme.onPrimary),
                 label: Text(
                   isMoviesCategory ? 'Find Movie' : 'Add Item',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onPrimary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -191,7 +219,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTabChip(String label, String icon, int index) {
+  Widget _buildTabChip(
+      String label, String icon, int index, BuildContext context) {
     final isSelected = _currentTabIndex == index;
 
     return GestureDetector(
@@ -204,17 +233,23 @@ class _HomeScreenState extends State<HomeScreen> {
         duration: Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.accent : AppTheme.surface,
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(25),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppTheme.accent.withOpacity(0.3),
+                    color:
+                        Theme.of(context).colorScheme.primary.withOpacity(0.3),
                     blurRadius: 8,
                     offset: Offset(0, 4),
                   ),
                 ]
               : [],
+          border: isSelected
+              ? null
+              : Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -229,7 +264,9 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : AppTheme.textPrimary,
+                color: isSelected
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : Theme.of(context).textTheme.bodyLarge?.color,
               ),
             ),
           ],
@@ -278,7 +315,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textSecondary,
+                color: Theme.of(context).textTheme.bodyMedium?.color,
               ),
             ),
             SizedBox(height: 8),
@@ -286,7 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
               'Tap the + button to add your first item',
               style: TextStyle(
                 fontSize: 14,
-                color: AppTheme.textSecondary,
+                color: Theme.of(context).textTheme.bodyMedium?.color,
               ),
             ),
           ],

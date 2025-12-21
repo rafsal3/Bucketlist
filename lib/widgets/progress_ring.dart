@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import '../theme/app_theme.dart';
 
 class ProgressRing extends StatelessWidget {
   final double progress;
@@ -24,7 +23,7 @@ class ProgressRing extends StatelessWidget {
             size: Size(size, size),
             painter: _RingPainter(
               progress: 1.0,
-              color: AppTheme.accentLight,
+              color: Theme.of(context).colorScheme.primaryContainer,
               strokeWidth: 6,
             ),
           ),
@@ -33,7 +32,7 @@ class ProgressRing extends StatelessWidget {
             size: Size(size, size),
             painter: _RingPainter(
               progress: progress,
-              color: AppTheme.accent,
+              color: Theme.of(context).colorScheme.primary,
               strokeWidth: 6,
             ),
           ),
@@ -44,7 +43,7 @@ class ProgressRing extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).textTheme.bodyLarge?.color,
               ),
             ),
           ),

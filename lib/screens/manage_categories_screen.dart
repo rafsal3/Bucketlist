@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
-import '../theme/app_theme.dart';
 
 class ManageCategoriesScreen extends StatelessWidget {
   const ManageCategoriesScreen({super.key});
@@ -9,18 +8,19 @@ class ManageCategoriesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppTheme.textPrimary),
+          icon:
+              Icon(Icons.arrow_back, color: Theme.of(context).iconTheme.color),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Manage Categories',
           style: TextStyle(
-            color: AppTheme.textPrimary,
+            color: Theme.of(context).textTheme.titleLarge?.color,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -31,7 +31,8 @@ class ManageCategoriesScreen extends StatelessWidget {
             return Center(
               child: Text(
                 'No categories found',
-                style: TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(
+                    color: Theme.of(context).textTheme.bodyMedium?.color),
               ),
             );
           }
@@ -65,7 +66,7 @@ class ManageCategoriesScreen extends StatelessWidget {
       key: ValueKey(category.id),
       margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -82,7 +83,7 @@ class ManageCategoriesScreen extends StatelessWidget {
           height: 40,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: AppTheme.background,
+            color: Theme.of(context).scaffoldBackgroundColor,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
@@ -94,14 +95,14 @@ class ManageCategoriesScreen extends StatelessWidget {
           category.name,
           style: TextStyle(
             fontWeight: FontWeight.w600,
-            color: AppTheme.textPrimary,
+            color: Theme.of(context).textTheme.titleMedium?.color,
             fontSize: 16,
           ),
         ),
         subtitle: Text(
           '${category.totalCount} items',
           style: TextStyle(
-            color: AppTheme.textSecondary,
+            color: Theme.of(context).textTheme.bodyMedium?.color,
             fontSize: 12,
           ),
         ),
@@ -117,7 +118,8 @@ class ManageCategoriesScreen extends StatelessWidget {
               index: index,
               child: Padding(
                 padding: EdgeInsets.only(left: 8),
-                child: Icon(Icons.drag_handle, color: AppTheme.textSecondary),
+                child: Icon(Icons.drag_handle,
+                    color: Theme.of(context).textTheme.bodyMedium?.color),
               ),
             ),
           ],
@@ -131,18 +133,21 @@ class ManageCategoriesScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.surface,
+        backgroundColor: Theme.of(context).cardColor,
         title: Text('Delete Category?',
-            style: TextStyle(color: AppTheme.textPrimary)),
+            style: TextStyle(
+                color: Theme.of(context).textTheme.titleLarge?.color)),
         content: Text(
           'Are you sure you want to delete "${category.name}"? This will also delete all ${category.totalCount} items in it.',
-          style: TextStyle(color: AppTheme.textSecondary),
+          style:
+              TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child:
-                Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+            child: Text('Cancel',
+                style: TextStyle(
+                    color: Theme.of(context).textTheme.bodyMedium?.color)),
           ),
           TextButton(
             onPressed: () {

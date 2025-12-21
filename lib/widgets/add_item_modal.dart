@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
-import '../theme/app_theme.dart';
 
 class AddItemModal extends StatefulWidget {
   final String? selectedCategoryId;
@@ -46,7 +45,7 @@ class _AddItemModalState extends State<AddItemModal> {
         maxHeight: MediaQuery.of(context).size.height * 0.9,
       ),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.only(
@@ -65,7 +64,7 @@ class _AddItemModalState extends State<AddItemModal> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    color: Theme.of(context).dividerColor,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -86,7 +85,7 @@ class _AddItemModalState extends State<AddItemModal> {
                 decoration: InputDecoration(
                   hintText: 'What do you want to do?',
                   filled: true,
-                  fillColor: AppTheme.background,
+                  fillColor: Theme.of(context).scaffoldBackgroundColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -106,7 +105,7 @@ class _AddItemModalState extends State<AddItemModal> {
                   return Container(
                     padding: EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppTheme.background,
+                      color: Theme.of(context).scaffoldBackgroundColor,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
@@ -117,7 +116,8 @@ class _AddItemModalState extends State<AddItemModal> {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: AppTheme.textSecondary,
+                            color:
+                                Theme.of(context).textTheme.bodyMedium?.color,
                           ),
                         ),
                         SizedBox(height: 12),
@@ -164,8 +164,8 @@ class _AddItemModalState extends State<AddItemModal> {
                 child: ElevatedButton(
                   onPressed: _addItem,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.accent,
-                    foregroundColor: Colors.white,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     padding: EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -208,12 +208,14 @@ class _CategoryChip extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.accent : AppTheme.surface,
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? AppTheme.accent
-                : AppTheme.textSecondary.withOpacity(0.2),
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).dividerColor,
             width: 1.5,
           ),
         ),
@@ -230,7 +232,9 @@ class _CategoryChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: isSelected ? Colors.white : AppTheme.textPrimary,
+                color: isSelected
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : Theme.of(context).textTheme.bodyLarge?.color,
               ),
             ),
           ],

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../models/category_model.dart';
-import '../theme/app_theme.dart';
 
 class CategoryScreen extends StatefulWidget {
   final String categoryId;
@@ -78,7 +77,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                 .textTheme
                                 .titleMedium
                                 ?.copyWith(
-                                  color: AppTheme.accent,
+                                  color: Theme.of(context).colorScheme.primary,
                                 ),
                           ),
                         ],
@@ -89,16 +88,17 @@ class _CategoryScreenState extends State<CategoryScreen> {
                         child: LinearProgressIndicator(
                           value: category.progress,
                           minHeight: 6,
-                          backgroundColor: AppTheme.accentLight,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(AppTheme.accent),
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primaryContainer,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              Theme.of(context).colorScheme.primary),
                         ),
                       ),
                     ],
                   ),
                 ),
 
-              Divider(height: 1, color: AppTheme.divider),
+              Divider(height: 1, color: Theme.of(context).dividerColor),
 
               // Items list
               Expanded(
@@ -118,7 +118,10 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                   .textTheme
                                   .titleMedium
                                   ?.copyWith(
-                                    color: AppTheme.textSecondary,
+                                    color: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.color,
                                   ),
                             ),
                             SizedBox(height: 8),
@@ -150,9 +153,9 @@ class _CategoryScreenState extends State<CategoryScreen> {
               // Add item input
               Container(
                 decoration: BoxDecoration(
-                  color: AppTheme.background,
+                  color: Theme.of(context).scaffoldBackgroundColor,
                   border: Border(
-                    top: BorderSide(color: AppTheme.divider),
+                    top: BorderSide(color: Theme.of(context).dividerColor),
                   ),
                 ),
                 padding: EdgeInsets.only(
@@ -180,12 +183,13 @@ class _CategoryScreenState extends State<CategoryScreen> {
                     SizedBox(width: 12),
                     Container(
                       decoration: BoxDecoration(
-                        color: AppTheme.accent,
+                        color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: IconButton(
                         onPressed: () => _addItem(appState),
-                        icon: Icon(Icons.add, color: Colors.white),
+                        icon: Icon(Icons.add,
+                            color: Theme.of(context).colorScheme.onPrimary),
                       ),
                     ),
                   ],
@@ -236,18 +240,19 @@ class _ChecklistItemTile extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: item.isCompleted
-                        ? AppTheme.accent
-                        : AppTheme.textSecondary,
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).disabledColor,
                     width: 2,
                   ),
-                  color:
-                      item.isCompleted ? AppTheme.accent : Colors.transparent,
+                  color: item.isCompleted
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.transparent,
                 ),
                 child: item.isCompleted
                     ? Icon(
                         Icons.check,
                         size: 16,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onPrimary,
                       )
                     : null,
               ),
@@ -262,8 +267,8 @@ class _ChecklistItemTile extends StatelessWidget {
                             ? TextDecoration.lineThrough
                             : TextDecoration.none,
                         color: item.isCompleted
-                            ? AppTheme.completedItem
-                            : AppTheme.textPrimary,
+                            ? Theme.of(context).disabledColor
+                            : Theme.of(context).textTheme.bodyLarge?.color,
                       ),
                 ),
               ),

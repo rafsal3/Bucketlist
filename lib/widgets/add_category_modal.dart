@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
-import '../theme/app_theme.dart';
 
 class AddCategoryModal extends StatefulWidget {
   const AddCategoryModal({super.key});
@@ -65,7 +64,7 @@ class _AddCategoryModalState extends State<AddCategoryModal> {
         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
       ),
       decoration: BoxDecoration(
-        color: AppTheme.background,
+        color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
@@ -119,11 +118,13 @@ class _AddCategoryModalState extends State<AddCategoryModal> {
                   child: Container(
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? AppTheme.accentLight
-                          : AppTheme.cardBackground,
+                          ? Theme.of(context).colorScheme.primaryContainer
+                          : Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? AppTheme.accent : AppTheme.divider,
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).dividerColor,
                         width: isSelected ? 2 : 1,
                       ),
                     ),
@@ -146,8 +147,8 @@ class _AddCategoryModalState extends State<AddCategoryModal> {
             child: ElevatedButton(
               onPressed: _createCategory,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accent,
-                foregroundColor: Colors.white,
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
                 padding: EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),

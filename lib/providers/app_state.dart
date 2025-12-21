@@ -6,9 +6,11 @@ import '../models/category_model.dart' as models;
 class AppState extends ChangeNotifier {
   List<models.Category> _categories = [];
   bool _isLoading = true;
+  bool _isDarkMode = false;
 
   List<models.Category> get categories => _categories;
   bool get isLoading => _isLoading;
+  bool get isDarkMode => _isDarkMode;
 
   int get totalCompleted =>
       _categories.fold<int>(0, (sum, cat) => sum + cat.completedCount);
@@ -25,6 +27,7 @@ class AppState extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final String? categoriesJson = prefs.getString('categories');
+      _isDarkMode = prefs.getBool('isDarkMode') ?? false;
 
       if (categoriesJson != null) {
         final List<dynamic> decoded = jsonDecode(categoriesJson);
@@ -52,6 +55,21 @@ class AppState extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error saving data: $e');
     }
+  }
+
+  Future<void> _saveTheme() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isDarkMode', _isDarkMode);
+    } catch (e) {
+      debugPrint('Error saving theme: $e');
+    }
+  }
+
+  void toggleTheme() {
+    _isDarkMode = !_isDarkMode;
+    _saveTheme();
+    notifyListeners();
   }
 
   List<models.Category> _getDefaultCategories() {
