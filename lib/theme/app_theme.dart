@@ -11,6 +11,7 @@ class AppTheme {
   static const Color accentLight = Color(0xFFE8EEF5);
   static const Color divider = Color(0xFFEEEEEE);
   static const Color completedItem = Color(0xFFB8B8B8);
+  static const Color surface = cardBackground; // Add surface color
 
   static ThemeData get lightTheme {
     return ThemeData(

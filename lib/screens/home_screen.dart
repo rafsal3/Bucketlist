@@ -14,43 +14,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _HomeScreenState extends State<HomeScreen> {
   int _currentTabIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    // Initialize with 1 tab (All), will update when categories load
-    _tabController = TabController(length: 1, vsync: this);
-    _tabController.addListener(() {
-      setState(() {
-        _currentTabIndex = _tabController.index;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  void _updateTabController(int newLength) {
-    final oldIndex = _tabController.index;
-    _tabController.dispose();
-    _tabController = TabController(
-      length: newLength,
-      vsync: this,
-      initialIndex: oldIndex < newLength ? oldIndex : 0,
-    );
-    _tabController.addListener(() {
-      setState(() {
-        _currentTabIndex = _tabController.index;
-      });
-    });
-  }
 
   String? _getCurrentCategoryId(AppState appState) {
     if (_currentTabIndex == 0) return null; // "All" tab
@@ -71,14 +36,7 @@ class _HomeScreenState extends State<HomeScreen>
               return Center(child: CircularProgressIndicator());
             }
 
-            // Update tab controller if category count changed
-            final expectedLength =
-                appState.categories.length + 1; // +1 for "All" tab
-            if (_tabController.length != expectedLength) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                _updateTabController(expectedLength);
-              });
-            }
+            // Tab controller logic removed
 
             return Column(
               children: [
@@ -204,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen>
     return GestureDetector(
       onTap: () {
         setState(() {
-          _tabController.animateTo(index);
+          _currentTabIndex = index;
         });
       },
       child: AnimatedContainer(
