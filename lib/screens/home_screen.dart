@@ -28,6 +28,82 @@ class _HomeScreenState extends State<HomeScreen> {
     return null;
   }
 
+  void _showSettingsModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: Offset(0, -5),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: EdgeInsets.symmetric(vertical: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).dividerColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Text(
+                  'Settings',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ),
+              Consumer<AppState>(
+                builder: (context, appState, child) {
+                  return SwitchListTile(
+                    title: Text('Dark Mode'),
+                    secondary: Icon(
+                      appState.isDarkMode
+                          ? Icons.dark_mode_rounded
+                          : Icons.light_mode_rounded,
+                    ),
+                    value: appState.isDarkMode,
+                    onChanged: (value) {
+                      appState.toggleTheme();
+                    },
+                  );
+                },
+              ),
+              ListTile(
+                title: Text('Manage Categories'),
+                leading: Icon(Icons.category_rounded),
+                trailing: Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(context); // Close the modal
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ManageCategoriesScreen(),
+                    ),
+                  );
+                },
+              ),
+              SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -67,7 +143,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         size: 70,
                       ),
                       SizedBox(width: 8),
-                      // Theme Toggle
+                      SizedBox(width: 8),
+                      // Settings Button
                       Container(
                         decoration: BoxDecoration(
                           color: Theme.of(context).cardColor,
@@ -78,37 +155,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         child: IconButton(
                           icon: Icon(
-                            appState.isDarkMode
-                                ? Icons.light_mode_rounded
-                                : Icons.dark_mode_rounded,
+                            Icons.settings_rounded,
                             color: Theme.of(context).iconTheme.color,
                           ),
-                          tooltip: 'Toggle Theme',
-                          onPressed: () {
-                            appState.toggleTheme();
-                          },
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(12),
-                          border:
-                              Border.all(color: Theme.of(context).dividerColor),
-                        ),
-                        child: IconButton(
-                          icon: Icon(Icons.tune,
-                              color: Theme.of(context).iconTheme.color),
-                          tooltip: 'Manage Categories',
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ManageCategoriesScreen(),
-                              ),
-                            );
-                          },
+                          tooltip: 'Settings',
+                          onPressed: () => _showSettingsModal(context),
                         ),
                       ),
                     ],
