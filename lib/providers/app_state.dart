@@ -190,10 +190,12 @@ class AppState extends ChangeNotifier {
 
   // Get items for a specific category
   List<models.ChecklistItem> getItemsForCategory(String categoryId) {
-    final category = _categories.firstWhere((cat) => cat.id == categoryId);
-    return category.items
-        .where((item) => item.categoryId == categoryId)
-        .toList();
+    List<models.ChecklistItem> items = [];
+    for (var category in _categories) {
+      items.addAll(
+          category.items.where((item) => item.categoryId == categoryId));
+    }
+    return items;
   }
 
   // Get uncategorized items
