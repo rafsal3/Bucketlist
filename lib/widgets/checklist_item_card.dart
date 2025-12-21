@@ -17,65 +17,6 @@ class ChecklistItemCard extends StatelessWidget {
     this.index,
   }) : super(key: key);
 
-  void _showItemOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle bar
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppTheme.textSecondary.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            SizedBox(height: 24),
-
-            // Item text
-            Text(
-              item.text,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 24),
-
-            // Move to category
-            ListTile(
-              leading: Icon(Icons.folder_outlined, color: AppTheme.accent),
-              title: Text('Move to Category'),
-              onTap: () {
-                Navigator.pop(context);
-                _showCategoryPicker(context);
-              },
-            ),
-
-            // Delete
-            ListTile(
-              leading: Icon(Icons.delete_outline, color: Colors.red),
-              title: Text('Delete', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                appState.deleteItem(item.id);
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showItemDetails(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -162,66 +103,85 @@ class ChecklistItemCard extends StatelessWidget {
                 SizedBox(height: 24),
               ],
 
-              // Actions
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildActionButton(
-                    context,
-                    icon: Icons.check_circle_outline,
-                    label: item.isCompleted ? 'Mark Undone' : 'Mark Done',
+              Divider(color: AppTheme.textSecondary.withOpacity(0.1)),
+              SizedBox(height: 8),
+
+              // Actions List
+              // Mark Done/Undone
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    item.isCompleted
+                        ? Icons.check_circle_outline
+                        : Icons.radio_button_unchecked,
                     color: AppTheme.accent,
-                    onTap: () {
-                      appState.toggleItem(item.id);
-                      Navigator.pop(context);
-                    },
                   ),
-                  _buildActionButton(
-                    context,
-                    icon: Icons.edit_outlined,
-                    label: 'Options',
-                    color: AppTheme.textPrimary,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showItemOptions(context);
-                    },
-                  ),
-                ],
+                ),
+                title: Text(
+                  item.isCompleted ? 'Mark as Undone' : 'Mark as Done',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                onTap: () {
+                  appState.toggleItem(item.id);
+                  Navigator.pop(context);
+                },
               ),
+
+              // Move to Category
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.textPrimary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child:
+                      Icon(Icons.folder_outlined, color: AppTheme.textPrimary),
+                ),
+                title: Text(
+                  'Move to Category',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showCategoryPicker(context);
+                },
+              ),
+
+              // Delete
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.delete_outlined, color: Colors.red),
+                ),
+                title: Text(
+                  'Delete Item',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                onTap: () {
+                  appState.deleteItem(item.id);
+                  Navigator.pop(context);
+                },
+              ),
+
               SizedBox(height: 24),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton(BuildContext context,
-      {required IconData icon,
-      required String label,
-      required Color color,
-      required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 28),
-            SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -312,7 +272,6 @@ class ChecklistItemCard extends StatelessWidget {
     }
 
     return GestureDetector(
-      onLongPress: () => _showItemOptions(context),
       onTap: () => _showItemDetails(context),
       child: Container(
         margin: EdgeInsets.only(bottom: 12),
