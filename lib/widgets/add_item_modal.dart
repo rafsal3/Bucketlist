@@ -42,6 +42,9 @@ class _AddItemModalState extends State<AddItemModal> {
   @override
   Widget build(BuildContext context) {
     return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.9,
+      ),
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -49,134 +52,136 @@ class _AddItemModalState extends State<AddItemModal> {
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Handle bar
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppTheme.textSecondary.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            SizedBox(height: 24),
-
-            // Title
-            Text(
-              'Add Item',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            SizedBox(height: 24),
-
-            // Item text field
-            TextField(
-              controller: _textController,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: 'What do you want to do?',
-                filled: true,
-                fillColor: AppTheme.background,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
-              ),
-              onSubmitted: (_) => _addItem(),
-            ),
-            SizedBox(height: 16),
-
-            // Category selector
-            Consumer<AppState>(
-              builder: (context, appState, child) {
-                return Container(
-                  padding: EdgeInsets.all(16),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
                   decoration: BoxDecoration(
-                    color: AppTheme.background,
-                    borderRadius: BorderRadius.circular(12),
+                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Category',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          // Uncategorized option
-                          _CategoryChip(
-                            label: 'Uncategorized',
-                            icon: '📝',
-                            isSelected: _selectedCategoryId == null,
-                            onTap: () {
-                              setState(() {
-                                _selectedCategoryId = null;
-                              });
-                            },
+                ),
+              ),
+              SizedBox(height: 24),
+
+              // Title
+              Text(
+                'Add Item',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              SizedBox(height: 24),
+
+              // Item text field
+              TextField(
+                controller: _textController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'What do you want to do?',
+                  filled: true,
+                  fillColor: AppTheme.background,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
+                ),
+                onSubmitted: (_) => _addItem(),
+              ),
+              SizedBox(height: 16),
+
+              // Category selector
+              Consumer<AppState>(
+                builder: (context, appState, child) {
+                  return Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.background,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Category',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textSecondary,
                           ),
-                          // Category options
-                          ...appState.categories.map((category) {
-                            return _CategoryChip(
-                              label: category.name,
-                              icon: category.icon,
-                              isSelected: _selectedCategoryId == category.id,
+                        ),
+                        SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            // Uncategorized option
+                            _CategoryChip(
+                              label: 'Uncategorized',
+                              icon: '📝',
+                              isSelected: _selectedCategoryId == null,
                               onTap: () {
                                 setState(() {
-                                  _selectedCategoryId = category.id;
+                                  _selectedCategoryId = null;
                                 });
                               },
-                            );
-                          }).toList(),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-            SizedBox(height: 24),
+                            ),
+                            // Category options
+                            ...appState.categories.map((category) {
+                              return _CategoryChip(
+                                label: category.name,
+                                icon: category.icon,
+                                isSelected: _selectedCategoryId == category.id,
+                                onTap: () {
+                                  setState(() {
+                                    _selectedCategoryId = category.id;
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              SizedBox(height: 24),
 
-            // Add button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _addItem,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.accent,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              // Add button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _addItem,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.accent,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                ),
-                child: Text(
-                  'Add Item',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                  child: Text(
+                    'Add Item',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

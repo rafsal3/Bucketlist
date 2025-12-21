@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../models/category_model.dart';
+import '../widgets/add_movie_modal.dart';
 import '../widgets/add_category_modal.dart';
 import '../widgets/add_item_modal.dart';
 import '../theme/app_theme.dart';
@@ -127,22 +128,37 @@ class _HomeScreenState extends State<HomeScreen> {
           // Add Item button
           Consumer<AppState>(
             builder: (context, appState, child) {
+              final currentCategoryId = _getCurrentCategoryId(appState);
+              final isMoviesCategory = currentCategoryId == 'default_movies';
+
               return FloatingActionButton.extended(
                 heroTag: 'add_item',
                 onPressed: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (context) => AddItemModal(
-                      selectedCategoryId: _getCurrentCategoryId(appState),
-                    ),
-                  );
+                  if (isMoviesCategory) {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => AddMovieModal(
+                        categoryId: currentCategoryId!,
+                      ),
+                    );
+                  } else {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => AddItemModal(
+                        selectedCategoryId: currentCategoryId,
+                      ),
+                    );
+                  }
                 },
                 backgroundColor: AppTheme.accent,
-                icon: Icon(Icons.add, color: Colors.white),
+                icon: Icon(isMoviesCategory ? Icons.movie : Icons.add,
+                    color: Colors.white),
                 label: Text(
-                  'Add Item',
+                  isMoviesCategory ? 'Find Movie' : 'Add Item',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
@@ -331,58 +347,64 @@ class _ItemCard extends StatelessWidget {
   void _showCategoryPicker(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
         decoration: BoxDecoration(
           color: AppTheme.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle bar
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppTheme.textSecondary.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(2),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppTheme.textSecondary.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
-            SizedBox(height: 24),
+              SizedBox(height: 24),
 
-            Text(
-              'Move to Category',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
+              Text(
+                'Move to Category',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-            SizedBox(height: 24),
+              SizedBox(height: 24),
 
-            // Uncategorized option
-            ListTile(
-              leading: Text('📝', style: TextStyle(fontSize: 24)),
-              title: Text('Uncategorized'),
-              onTap: () {
-                appState.moveItemToCategory(item.id, null);
-                Navigator.pop(context);
-              },
-            ),
-
-            // Categories
-            ...appState.categories.map((category) {
-              return ListTile(
-                leading: Text(category.icon, style: TextStyle(fontSize: 24)),
-                title: Text(category.name),
+              // Uncategorized option
+              ListTile(
+                leading: Text('📝', style: TextStyle(fontSize: 24)),
+                title: Text('Uncategorized'),
                 onTap: () {
-                  appState.moveItemToCategory(item.id, category.id);
+                  appState.moveItemToCategory(item.id, null);
                   Navigator.pop(context);
                 },
-              );
-            }).toList(),
-          ],
+              ),
+
+              // Categories
+              ...appState.categories.map((category) {
+                return ListTile(
+                  leading: Text(category.icon, style: TextStyle(fontSize: 24)),
+                  title: Text(category.name),
+                  onTap: () {
+                    appState.moveItemToCategory(item.id, category.id);
+                    Navigator.pop(context);
+                  },
+                );
+              }).toList(),
+            ],
+          ),
         ),
       ),
     );
