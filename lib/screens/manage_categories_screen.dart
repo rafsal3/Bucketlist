@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../widgets/add_category_modal.dart';
 import '../providers/app_state.dart';
 
 class ManageCategoriesScreen extends StatelessWidget {
@@ -56,6 +57,18 @@ class ManageCategoriesScreen extends StatelessWidget {
             },
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => AddCategoryModal(),
+          );
+        },
+        backgroundColor: Theme.of(context).cardColor,
+        child: Icon(Icons.add, color: Theme.of(context).iconTheme.color),
       ),
     );
   }

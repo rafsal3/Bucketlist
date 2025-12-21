@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../models/category_model.dart';
 import '../widgets/add_movie_modal.dart';
-import '../widgets/add_category_modal.dart';
 import '../widgets/add_item_modal.dart';
 import '../widgets/checklist_item_card.dart';
 import '../widgets/progress_ring.dart';
@@ -198,68 +197,46 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Add Category button
-          FloatingActionButton(
-            heroTag: 'add_category',
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (context) => AddCategoryModal(),
-              );
-            },
-            backgroundColor: Theme.of(context).cardColor,
-            child: Icon(Icons.folder_outlined,
-                color: Theme.of(context).colorScheme.primary),
-          ),
-          SizedBox(height: 12),
-          // Add Item button
-          Consumer<AppState>(
-            builder: (context, appState, child) {
-              final currentCategoryId = _getCurrentCategoryId(appState);
-              final isMoviesCategory = currentCategoryId == 'default_movies';
+      floatingActionButton: Consumer<AppState>(
+        builder: (context, appState, child) {
+          final currentCategoryId = _getCurrentCategoryId(appState);
+          final isMoviesCategory = currentCategoryId == 'default_movies';
 
-              return FloatingActionButton.extended(
-                heroTag: 'add_item',
-                onPressed: () {
-                  if (isMoviesCategory) {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (context) => AddMovieModal(
-                        categoryId: currentCategoryId!,
-                      ),
-                    );
-                  } else {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (context) => AddItemModal(
-                        selectedCategoryId: currentCategoryId,
-                      ),
-                    );
-                  }
-                },
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                icon: Icon(isMoviesCategory ? Icons.movie : Icons.add,
-                    color: Theme.of(context).colorScheme.onPrimary),
-                label: Text(
-                  isMoviesCategory ? 'Find Movie' : 'Add Item',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onPrimary,
-                    fontWeight: FontWeight.w600,
+          return FloatingActionButton.extended(
+            heroTag: 'add_item',
+            onPressed: () {
+              if (isMoviesCategory) {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => AddMovieModal(
+                    categoryId: currentCategoryId!,
                   ),
-                ),
-              );
+                );
+              } else {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => AddItemModal(
+                    selectedCategoryId: currentCategoryId,
+                  ),
+                );
+              }
             },
-          ),
-        ],
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            icon: Icon(isMoviesCategory ? Icons.movie : Icons.add,
+                color: Theme.of(context).colorScheme.onPrimary),
+            label: Text(
+              isMoviesCategory ? 'Find Movie' : 'Add Item',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          );
+        },
       ),
     );
   }
