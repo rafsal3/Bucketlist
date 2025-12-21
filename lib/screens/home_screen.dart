@@ -1,18 +1,69 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
-import '../widgets/category_card.dart';
+import '../models/category_model.dart';
 import '../widgets/add_category_modal.dart';
+import '../widgets/add_item_modal.dart';
 import '../theme/app_theme.dart';
-import 'category_screen.dart';
 import 'dart:math' as math;
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  int _currentTabIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize with 1 tab (All), will update when categories load
+    _tabController = TabController(length: 1, vsync: this);
+    _tabController.addListener(() {
+      setState(() {
+        _currentTabIndex = _tabController.index;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _updateTabController(int newLength) {
+    final oldIndex = _tabController.index;
+    _tabController.dispose();
+    _tabController = TabController(
+      length: newLength,
+      vsync: this,
+      initialIndex: oldIndex < newLength ? oldIndex : 0,
+    );
+    _tabController.addListener(() {
+      setState(() {
+        _currentTabIndex = _tabController.index;
+      });
+    });
+  }
+
+  String? _getCurrentCategoryId(AppState appState) {
+    if (_currentTabIndex == 0) return null; // "All" tab
+    if (_currentTabIndex - 1 < appState.categories.length) {
+      return appState.categories[_currentTabIndex - 1].id;
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.background,
       body: SafeArea(
         child: Consumer<AppState>(
           builder: (context, appState, child) {
@@ -20,97 +71,469 @@ class HomeScreen extends StatelessWidget {
               return Center(child: CircularProgressIndicator());
             }
 
-            return CustomScrollView(
-              slivers: [
-                // App Header with Progress Ring
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+            // Update tab controller if category count changed
+            final expectedLength =
+                appState.categories.length + 1; // +1 for "All" tab
+            if (_tabController.length != expectedLength) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _updateTabController(expectedLength);
+              });
+            }
+
+            return Column(
+              children: [
+                // Header with progress ring
+                Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'My Bucket List',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .displayLarge,
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Track your life goals',
-                                    style:
-                                        Theme.of(context).textTheme.bodyMedium,
-                                  ),
-                                ],
-                              ),
+                            Text(
+                              'My Bucket List',
+                              style: Theme.of(context).textTheme.displayLarge,
                             ),
-                            // Progress Ring
-                            _ProgressRing(
-                              progress: appState.overallProgress,
-                              size: 70,
+                            SizedBox(height: 8),
+                            Text(
+                              'Track your life goals',
+                              style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                      _ProgressRing(
+                        progress: appState.overallProgress,
+                        size: 70,
+                      ),
+                    ],
                   ),
                 ),
 
-                // Categories Grid
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final category = appState.categories[index];
+                // Category tabs
+                Container(
+                  height: 50,
+                  margin: EdgeInsets.symmetric(horizontal: 24),
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      _buildTabChip('All', '📋', 0),
+                      SizedBox(width: 8),
+                      ...appState.categories.asMap().entries.map((entry) {
+                        final index =
+                            entry.key + 1; // +1 because "All" is at index 0
+                        final category = entry.value;
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: 16.0),
-                          child: CategoryCard(
-                            category: category,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => CategoryScreen(
-                                    categoryId: category.id,
-                                  ),
-                                ),
-                              );
-                            },
+                          padding: EdgeInsets.only(right: 8),
+                          child: _buildTabChip(
+                            category.name,
+                            category.icon,
+                            index,
                           ),
                         );
-                      },
-                      childCount: appState.categories.length,
-                    ),
+                      }).toList(),
+                    ],
                   ),
                 ),
 
-                // Bottom spacing
-                SliverToBoxAdapter(
-                  child: SizedBox(height: 100),
+                SizedBox(height: 24),
+
+                // Items list
+                Expanded(
+                  child: _buildItemsList(appState),
                 ),
               ],
             );
           },
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (context) => AddCategoryModal(),
-          );
-        },
-        icon: Icon(Icons.add),
-        label: Text('Add Category'),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Add Category button
+          FloatingActionButton(
+            heroTag: 'add_category',
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => AddCategoryModal(),
+              );
+            },
+            backgroundColor: AppTheme.surface,
+            child: Icon(Icons.folder_outlined, color: AppTheme.accent),
+          ),
+          SizedBox(height: 12),
+          // Add Item button
+          Consumer<AppState>(
+            builder: (context, appState, child) {
+              return FloatingActionButton.extended(
+                heroTag: 'add_item',
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => AddItemModal(
+                      selectedCategoryId: _getCurrentCategoryId(appState),
+                    ),
+                  );
+                },
+                backgroundColor: AppTheme.accent,
+                icon: Icon(Icons.add, color: Colors.white),
+                label: Text(
+                  'Add Item',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabChip(String label, String icon, int index) {
+    final isSelected = _currentTabIndex == index;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _tabController.animateTo(index);
+        });
+      },
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.accent : AppTheme.surface,
+          borderRadius: BorderRadius.circular(25),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppTheme.accent.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                  ),
+                ]
+              : [],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              icon,
+              style: TextStyle(fontSize: 18),
+            ),
+            SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? Colors.white : AppTheme.textPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItemsList(AppState appState) {
+    List<ChecklistItem> items;
+
+    if (_currentTabIndex == 0) {
+      // "All" tab - show all items
+      items = appState.getAllItems();
+    } else {
+      // Specific category tab
+      final categoryId = appState.categories[_currentTabIndex - 1].id;
+      items = appState.getItemsForCategory(categoryId);
+    }
+
+    if (items.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '📝',
+              style: TextStyle(fontSize: 64),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'No items yet',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Tap the + button to add your first item',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: EdgeInsets.symmetric(horizontal: 24),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return _ItemCard(
+          item: item,
+          appState: appState,
+        );
+      },
+    );
+  }
+}
+
+class _ItemCard extends StatelessWidget {
+  final ChecklistItem item;
+  final AppState appState;
+
+  const _ItemCard({
+    required this.item,
+    required this.appState,
+  });
+
+  void _showItemOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.textSecondary.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            SizedBox(height: 24),
+
+            // Item text
+            Text(
+              item.text,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: 24),
+
+            // Move to category
+            ListTile(
+              leading: Icon(Icons.folder_outlined, color: AppTheme.accent),
+              title: Text('Move to Category'),
+              onTap: () {
+                Navigator.pop(context);
+                _showCategoryPicker(context);
+              },
+            ),
+
+            // Delete
+            ListTile(
+              leading: Icon(Icons.delete_outline, color: Colors.red),
+              title: Text('Delete', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                appState.deleteItem(item.id);
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCategoryPicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.textSecondary.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            SizedBox(height: 24),
+
+            Text(
+              'Move to Category',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: 24),
+
+            // Uncategorized option
+            ListTile(
+              leading: Text('📝', style: TextStyle(fontSize: 24)),
+              title: Text('Uncategorized'),
+              onTap: () {
+                appState.moveItemToCategory(item.id, null);
+                Navigator.pop(context);
+              },
+            ),
+
+            // Categories
+            ...appState.categories.map((category) {
+              return ListTile(
+                leading: Text(category.icon, style: TextStyle(fontSize: 24)),
+                title: Text(category.name),
+                onTap: () {
+                  appState.moveItemToCategory(item.id, category.id);
+                  Navigator.pop(context);
+                },
+              );
+            }).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Find the category for this item
+    String categoryLabel = 'Uncategorized';
+    String categoryIcon = '📝';
+
+    if (item.categoryId != null) {
+      try {
+        final category = appState.categories.firstWhere(
+          (cat) => cat.id == item.categoryId,
+        );
+        categoryLabel = category.name;
+        categoryIcon = category.icon;
+      } catch (e) {
+        // Category not found, keep default
+      }
+    }
+
+    return GestureDetector(
+      onLongPress: () => _showItemOptions(context),
+      child: Container(
+        margin: EdgeInsets.only(bottom: 12),
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Checkbox
+            GestureDetector(
+              onTap: () => appState.toggleItem(item.id),
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: item.isCompleted
+                        ? AppTheme.accent
+                        : AppTheme.textSecondary.withOpacity(0.3),
+                    width: 2,
+                  ),
+                  color:
+                      item.isCompleted ? AppTheme.accent : Colors.transparent,
+                ),
+                child: item.isCompleted
+                    ? Icon(
+                        Icons.check,
+                        size: 16,
+                        color: Colors.white,
+                      )
+                    : null,
+              ),
+            ),
+            SizedBox(width: 12),
+
+            // Item text and category
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.text,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: item.isCompleted
+                          ? AppTheme.textSecondary
+                          : AppTheme.textPrimary,
+                      decoration: item.isCompleted
+                          ? TextDecoration.lineThrough
+                          : TextDecoration.none,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text(
+                        categoryIcon,
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        categoryLabel,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

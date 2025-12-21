@@ -1,14 +1,14 @@
-import 'dart:convert';
-
 class ChecklistItem {
   final String id;
   String text;
   bool isCompleted;
+  String? categoryId; // null means uncategorized
 
   ChecklistItem({
     required this.id,
     required this.text,
     this.isCompleted = false,
+    this.categoryId,
   });
 
   Map<String, dynamic> toJson() {
@@ -16,6 +16,7 @@ class ChecklistItem {
       'id': id,
       'text': text,
       'isCompleted': isCompleted,
+      'categoryId': categoryId,
     };
   }
 
@@ -24,6 +25,7 @@ class ChecklistItem {
       id: json['id'] as String,
       text: json['text'] as String,
       isCompleted: json['isCompleted'] as bool? ?? false,
+      categoryId: json['categoryId'] as String?,
     );
   }
 }

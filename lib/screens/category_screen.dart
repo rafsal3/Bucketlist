@@ -137,10 +137,10 @@ class _CategoryScreenState extends State<CategoryScreen> {
                           return _ChecklistItemTile(
                             item: item,
                             onToggle: () {
-                              appState.toggleItem(widget.categoryId, item.id);
+                              appState.toggleItem(item.id);
                             },
                             onDelete: () {
-                              appState.deleteItem(widget.categoryId, item.id);
+                              appState.deleteItem(item.id);
                             },
                           );
                         },
