@@ -53,7 +53,12 @@ class _AddMovieModalState extends State<AddMovieModal> {
     if (movie.releaseDate.isNotEmpty) {
       title += ' (${movie.releaseDate.split('-').first})';
     }
-    appState.addItem(widget.categoryId, title);
+    appState.addItem(
+      widget.categoryId,
+      title,
+      imageUrl: TMDBService.getPosterUrl(movie.posterPath),
+      description: movie.overview,
+    );
     Navigator.pop(context);
   }
 
@@ -155,7 +160,7 @@ class _AddMovieModalState extends State<AddMovieModal> {
                                     EdgeInsets.symmetric(vertical: 8),
                                 leading: ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
-                                  child: movie.posterPath != null
+                                  child: posterUrl != null
                                       ? Image.network(
                                           posterUrl,
                                           width: 50,

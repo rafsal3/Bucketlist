@@ -115,11 +115,14 @@ class AppState extends ChangeNotifier {
     return allItems;
   }
 
-  void addItem(String? categoryId, String text) {
+  void addItem(String? categoryId, String text,
+      {String? imageUrl, String? description}) {
     final item = models.ChecklistItem(
       id: 'item_${DateTime.now().millisecondsSinceEpoch}',
       text: text,
       categoryId: categoryId,
+      imageUrl: imageUrl,
+      description: description,
     );
 
     if (categoryId != null) {

@@ -3,12 +3,16 @@ class ChecklistItem {
   String text;
   bool isCompleted;
   String? categoryId; // null means uncategorized
+  String? imageUrl;
+  String? description;
 
   ChecklistItem({
     required this.id,
     required this.text,
     this.isCompleted = false,
     this.categoryId,
+    this.imageUrl,
+    this.description,
   });
 
   Map<String, dynamic> toJson() {
@@ -17,6 +21,8 @@ class ChecklistItem {
       'text': text,
       'isCompleted': isCompleted,
       'categoryId': categoryId,
+      'imageUrl': imageUrl,
+      'description': description,
     };
   }
 
@@ -26,6 +32,8 @@ class ChecklistItem {
       text: json['text'] as String,
       isCompleted: json['isCompleted'] as bool? ?? false,
       categoryId: json['categoryId'] as String?,
+      imageUrl: json['imageUrl'] as String?,
+      description: json['description'] as String?,
     );
   }
 }

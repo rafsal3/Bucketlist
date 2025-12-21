@@ -5,7 +5,7 @@ import '../models/tmdb_movie.dart';
 class TMDBService {
   static const String _apiKey = 'cb90429b2fa956590feb66a96a30b763';
   static const String _baseUrl = 'https://api.themoviedb.org/3';
-  static const String _imageBaseUrl = 'https://image.tmdb.org/t/p/w200';
+  static const String _imageBaseUrl = 'https://image.tmdb.org/t/p/w500';
 
   Future<List<TMDBMovie>> searchMovies(String query) async {
     if (query.isEmpty) return [];
@@ -28,8 +28,8 @@ class TMDBService {
     }
   }
 
-  static String getPosterUrl(String? posterPath) {
-    if (posterPath == null) return ''; // Or a placeholder URL
+  static String? getPosterUrl(String? posterPath) {
+    if (posterPath == null) return null;
     return '$_imageBaseUrl$posterPath';
   }
 }

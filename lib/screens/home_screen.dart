@@ -344,6 +344,157 @@ class _ItemCard extends StatelessWidget {
     );
   }
 
+  void _showItemDetails(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              SizedBox(height: 24),
+
+              // Title
+              Text(
+                item.text,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 16),
+
+              // Image
+              if (item.imageUrl != null) ...[
+                Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.network(
+                      item.imageUrl!,
+                      height: 300,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 300,
+                        width: 200,
+                        color: Colors.grey[300],
+                        child: Icon(Icons.movie,
+                            size: 64, color: Colors.grey[600]),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 24),
+              ],
+
+              // Description
+              if (item.description != null && item.description!.isNotEmpty) ...[
+                Text(
+                  'Overview',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  item.description!,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: AppTheme.textSecondary,
+                    height: 1.5,
+                  ),
+                ),
+                SizedBox(height: 24),
+              ],
+
+              // Actions
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildActionButton(
+                    context,
+                    icon: Icons.check_circle_outline,
+                    label: item.isCompleted ? 'Mark Undone' : 'Mark Done',
+                    color: AppTheme.accent,
+                    onTap: () {
+                      appState.toggleItem(item.id);
+                      Navigator.pop(context);
+                    },
+                  ),
+                  _buildActionButton(
+                    context,
+                    icon: Icons.edit_outlined,
+                    label: 'Options',
+                    color: AppTheme.textPrimary,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showItemOptions(context);
+                    },
+                  ),
+                ],
+              ),
+              SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton(BuildContext context,
+      {required IconData icon,
+      required String label,
+      required Color color,
+      required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 28),
+            SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showCategoryPicker(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -430,6 +581,7 @@ class _ItemCard extends StatelessWidget {
 
     return GestureDetector(
       onLongPress: () => _showItemOptions(context),
+      onTap: () => _showItemDetails(context),
       child: Container(
         margin: EdgeInsets.only(bottom: 12),
         padding: EdgeInsets.all(16),
@@ -473,6 +625,22 @@ class _ItemCard extends StatelessWidget {
               ),
             ),
             SizedBox(width: 12),
+
+            // Image thumbnail
+            if (item.imageUrl != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  item.imageUrl!,
+                  width: 50,
+                  height: 75,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      SizedBox(width: 0, height: 0),
+                ),
+              ),
+              SizedBox(width: 12),
+            ],
 
             // Item text and category
             Expanded(
