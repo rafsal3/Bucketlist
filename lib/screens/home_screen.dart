@@ -169,26 +169,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Category tabs
                 Container(
                   height: 50,
-                  margin: EdgeInsets.symmetric(horizontal: 24),
                   child: ListView(
+                    padding: EdgeInsets.symmetric(horizontal: 24),
                     scrollDirection: Axis.horizontal,
                     children: [
                       _buildTabChip('All', '📋', 0, context),
-                      SizedBox(width: 8),
-                      ...appState.categories.asMap().entries.map((entry) {
-                        final index =
-                            entry.key + 1; // +1 because "All" is at index 0
-                        final category = entry.value;
-                        return Padding(
-                          padding: EdgeInsets.only(right: 8),
-                          child: _buildTabChip(
-                            category.name,
-                            category.icon,
-                            index,
-                            context,
-                          ),
-                        );
-                      }).toList(),
+                      for (int i = 0; i < appState.categories.length; i++) ...[
+                        SizedBox(width: 8),
+                        _buildTabChip(
+                          appState.categories[i].name,
+                          appState.categories[i].icon,
+                          i + 1,
+                          context,
+                        ),
+                      ],
                     ],
                   ),
                 ),
