@@ -69,30 +69,27 @@ class _AddItemModalState extends State<AddItemModal> {
                   ),
                 ),
               ),
-              SizedBox(height: 24),
+              SizedBox(height: 16),
 
-              // Title
-              Text(
-                'Add Item',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              SizedBox(height: 24),
-
-              // Item text field
+              // Item text field - at top without border
               TextField(
                 controller: _textController,
                 autofocus: true,
                 decoration: InputDecoration(
-                  hintText: 'What do you want to do?',
-                  filled: true,
-                  fillColor: Theme.of(context).scaffoldBackgroundColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                  hintText: 'List',
+                  hintStyle: TextStyle(
+                    color: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.color
+                        ?.withOpacity(0.5),
                   ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
+                    horizontal: 0,
+                    vertical: 8,
                   ),
                 ),
                 onSubmitted: (_) => _addItem(),
