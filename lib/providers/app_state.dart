@@ -132,6 +132,13 @@ class AppState extends ChangeNotifier {
         allItems.addAll(category.items);
       }
     }
+    // Sort by ID (which contains timestamp) in descending order (latest first)
+    allItems.sort((a, b) {
+      // Extract timestamp from ID (format: item_<timestamp>)
+      final timestampA = int.tryParse(a.id.split('_').last) ?? 0;
+      final timestampB = int.tryParse(b.id.split('_').last) ?? 0;
+      return timestampB.compareTo(timestampA); // Descending order
+    });
     return allItems;
   }
 
@@ -238,11 +245,11 @@ class AppState extends ChangeNotifier {
       if (newCategoryId != null) {
         final newCategory =
             _categories.firstWhere((cat) => cat.id == newCategoryId);
-        newCategory.items.add(itemToMove);
+        newCategory.items.insert(0, itemToMove); // Insert at beginning
       } else {
         // Move to uncategorized
         if (_categories.isNotEmpty) {
-          _categories.first.items.add(itemToMove);
+          _categories.first.items.insert(0, itemToMove); // Insert at beginning
         }
       }
 
@@ -253,12 +260,11 @@ class AppState extends ChangeNotifier {
 
   // Get items for a specific category
   List<models.ChecklistItem> getItemsForCategory(String categoryId) {
-    List<models.ChecklistItem> items = [];
-    for (var category in _categories) {
-      items.addAll(
-          category.items.where((item) => item.categoryId == categoryId));
-    }
-    return items;
+    final category = _categories.firstWhere(
+      (cat) => cat.id == categoryId,
+      orElse: () => models.Category(id: '', name: '', icon: ''),
+    );
+    return category.items;
   }
 
   // Get uncategorized items
