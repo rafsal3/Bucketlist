@@ -282,7 +282,10 @@ class AppState extends ChangeNotifier {
       (cat) => cat.id == categoryId,
       orElse: () => models.Category(id: '', name: '', icon: ''),
     );
-    return category.items;
+    // Only return items that actually belong to this category
+    return category.items
+        .where((item) => item.categoryId == categoryId)
+        .toList();
   }
 
   // Get uncategorized items

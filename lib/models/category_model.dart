@@ -53,8 +53,10 @@ class Category {
     List<ChecklistItem>? items,
   }) : items = items ?? [];
 
-  int get completedCount => items.where((item) => item.isCompleted).length;
-  int get totalCount => items.length;
+  // Only count items that actually belong to this category
+  int get completedCount =>
+      items.where((item) => item.categoryId == id && item.isCompleted).length;
+  int get totalCount => items.where((item) => item.categoryId == id).length;
   double get progress => totalCount == 0 ? 0.0 : completedCount / totalCount;
 
   Map<String, dynamic> toJson() {
