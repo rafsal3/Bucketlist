@@ -123,6 +123,15 @@ class ManageCategoriesScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
+              icon: Icon(
+                category.isHidden
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                color: Theme.of(context).textTheme.bodyMedium?.color,
+              ),
+              onPressed: () => appState.toggleCategoryVisibility(category.id),
+            ),
+            IconButton(
               icon: Icon(Icons.delete_outline, color: Colors.red[400]),
               onPressed: () =>
                   _showDeleteConfirmation(context, appState, category),

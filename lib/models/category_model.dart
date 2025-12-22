@@ -42,12 +42,14 @@ class Category {
   final String id;
   String name;
   String icon;
+  bool isHidden;
   List<ChecklistItem> items;
 
   Category({
     required this.id,
     required this.name,
     required this.icon,
+    this.isHidden = false,
     List<ChecklistItem>? items,
   }) : items = items ?? [];
 
@@ -60,6 +62,7 @@ class Category {
       'id': id,
       'name': name,
       'icon': icon,
+      'isHidden': isHidden,
       'items': items.map((item) => item.toJson()).toList(),
     };
   }
@@ -69,6 +72,7 @@ class Category {
       id: json['id'] as String,
       name: json['name'] as String,
       icon: json['icon'] as String,
+      isHidden: json['isHidden'] as bool? ?? false,
       items: (json['items'] as List<dynamic>?)
               ?.map((item) =>
                   ChecklistItem.fromJson(item as Map<String, dynamic>))

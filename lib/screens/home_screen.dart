@@ -26,10 +26,11 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  String? _getCurrentCategoryId(AppState appState) {
+  String? _getCurrentCategoryId(
+      AppState appState, List<Category> visibleCategories) {
     if (_currentTabIndex == 0) return null; // "All" tab
-    if (_currentTabIndex - 1 < appState.categories.length) {
-      return appState.categories[_currentTabIndex - 1].id;
+    if (_currentTabIndex - 1 < visibleCategories.length) {
+      return visibleCategories[_currentTabIndex - 1].id;
     }
     return null;
   }
@@ -121,6 +122,9 @@ class _HomeScreenState extends State<HomeScreen> {
               return Center(child: CircularProgressIndicator());
             }
 
+            final visibleCategories =
+                appState.categories.where((c) => !c.isHidden).toList();
+
             return NestedScrollView(
               controller: _scrollController,
               headerSliverBuilder:
@@ -192,12 +196,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             _buildTabChip('All', '📋', 0, context),
                             for (int i = 0;
-                                i < appState.categories.length;
+                                i < visibleCategories.length;
                                 i++) ...[
                               SizedBox(width: 8),
                               _buildTabChip(
-                                appState.categories[i].name,
-                                appState.categories[i].icon,
+                                visibleCategories[i].name,
+                                visibleCategories[i].icon,
                                 i + 1,
                                 context,
                               ),
@@ -211,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
               },
               body: Padding(
                 padding: const EdgeInsets.only(top: 24.0),
-                child: _buildItemsList(appState),
+                child: _buildItemsList(appState, visibleCategories),
               ),
             );
           },
@@ -219,7 +223,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       floatingActionButton: Consumer<AppState>(
         builder: (context, appState, child) {
-          final currentCategoryId = _getCurrentCategoryId(appState);
+          final visibleCategories =
+              appState.categories.where((c) => !c.isHidden).toList();
+          final currentCategoryId =
+              _getCurrentCategoryId(appState, visibleCategories);
           final isMoviesCategory = currentCategoryId == 'default_movies';
 
           return FloatingActionButton.extended(
@@ -326,7 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildItemsList(AppState appState) {
+  Widget _buildItemsList(AppState appState, List<Category> visibleCategories) {
     List<ChecklistItem> items;
 
     if (_currentTabIndex == 0) {
@@ -334,11 +341,11 @@ class _HomeScreenState extends State<HomeScreen> {
       items = appState.getAllItems();
     } else {
       // Specific category tab
-      if (_currentTabIndex - 1 < appState.categories.length) {
-        final categoryId = appState.categories[_currentTabIndex - 1].id;
+      if (_currentTabIndex - 1 < visibleCategories.length) {
+        final categoryId = visibleCategories[_currentTabIndex - 1].id;
         items = appState.getItemsForCategory(categoryId);
       } else {
-        // Tab index out of range (category deleted), fallback to All
+        // Tab index out of range (category deleted or hidden), fallback to All
         items = appState.getAllItems();
         // create a microtask to update state if needed, but for build just render All
         // We can't call setState here.
@@ -349,7 +356,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Drag and drop is definitely easier when viewing a specific category
     // For "All" tab, reordering is disabled because items are mixed
     final bool enableReorder = _currentTabIndex != 0 &&
-        (_currentTabIndex - 1 < appState.categories.length);
+        (_currentTabIndex - 1 < visibleCategories.length);
 
     if (items.isEmpty) {
       return Center(
@@ -405,7 +412,7 @@ class _HomeScreenState extends State<HomeScreen> {
       itemCount: items.length,
       onReorder: (oldIndex, newIndex) {
         if (_currentTabIndex != 0) {
-          final categoryId = appState.categories[_currentTabIndex - 1].id;
+          final categoryId = visibleCategories[_currentTabIndex - 1].id;
           appState.reorderItems(categoryId, oldIndex, newIndex);
         }
       },

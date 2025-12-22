@@ -124,11 +124,13 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Get all items across all categories
+  // Get all items across all visible categories
   List<models.ChecklistItem> getAllItems() {
     List<models.ChecklistItem> allItems = [];
     for (var category in _categories) {
-      allItems.addAll(category.items);
+      if (!category.isHidden) {
+        allItems.addAll(category.items);
+      }
     }
     return allItems;
   }
@@ -185,6 +187,16 @@ class AppState extends ChangeNotifier {
     _categories.insert(newIndex, category);
     _saveData();
     notifyListeners();
+  }
+
+  void toggleCategoryVisibility(String categoryId) {
+    final categoryIndex = _categories.indexWhere((cat) => cat.id == categoryId);
+    if (categoryIndex != -1) {
+      _categories[categoryIndex].isHidden =
+          !_categories[categoryIndex].isHidden;
+      _saveData();
+      notifyListeners();
+    }
   }
 
   void toggleItem(String itemId) {
