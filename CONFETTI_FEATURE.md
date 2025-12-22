@@ -18,16 +18,21 @@ import 'package:confetti/confetti.dart';
 
 #### State Management
 - Added `ConfettiController` to manage the confetti animation
-- Added `_previousProgress` to track progress changes
+- Added `_previousProgress` to track progress changes within the current category
+- Added `_previousCategoryId` to detect category/tab switches
 - Initialized controller in `initState()` with 3-second duration
-- Properly disposed controller in `dispose()`
+- **Added listener to AppState** to immediately detect progress changes
+- Properly disposed controller and removed listener in `dispose()`
 
 #### Confetti Trigger Logic
 - Created `_checkAndTriggerConfetti()` method that:
-  - Monitors progress changes
-  - Triggers confetti when progress reaches 100% (1.0)
-  - Only triggers once when transitioning from <100% to 100%
+  - Monitors progress changes per category
+  - Triggers confetti **every time** progress reaches 100% (1.0)
+  - Only triggers when transitioning from <100% to 100%
+  - **Does NOT trigger when switching to a tab** that's already at 100%
+  - Resets progress tracking when switching between tabs/categories
   - Uses `WidgetsBinding.instance.addPostFrameCallback()` to check after each build
+  - Creates unique category keys ('all' for overall, or category ID for specific categories)
 
 #### UI Changes
 - Wrapped the entire screen in a `Stack` widget
@@ -42,18 +47,32 @@ import 'package:confetti/confetti.dart';
 
 ## How It Works
 
-1. The app monitors the current progress (overall or category-specific)
-2. After each frame render, it checks if progress has reached 100%
-3. When progress transitions from <100% to 100%, the confetti controller plays
-4. Confetti particles explode from the top center and fall naturally
-5. The animation runs for 3 seconds and stops automatically
+1. The app adds a listener to the AppState in `initState()`
+2. **When you check/uncheck an item**, the AppState notifies all listeners immediately
+3. The `_onAppStateChanged()` callback fires and checks the current progress
+4. Each tab/category has a unique identifier ('all' for overall, or the category ID)
+5. When progress transitions from <100% to 100%, the confetti controller plays **immediately**
+6. **Confetti will play EVERY TIME** you complete a category (reach 100%)
+7. **Confetti will NOT play** when you switch to a tab that's already at 100%
+8. Confetti particles explode from the top center and fall naturally
+9. The animation runs for 3 seconds and stops automatically
+10. A backup check also runs via `addPostFrameCallback` to catch any edge cases
+
+### Example Scenarios:
+- ✅ Complete all items in "Travel" → **Confetti plays!** 🎉
+- ✅ Uncheck one item (99%) → Check it again (100%) → **Confetti plays again!** 🎉
+- ❌ Switch to "Movies" tab that's already at 100% → **No confetti** (just switching tabs)
+- ✅ In "Movies", uncheck an item (99%) → Check it (100%) → **Confetti plays!** 🎉
 
 ## Testing
 
 To test the confetti:
 1. Complete all items in a category to reach 100% progress
-2. Or complete all items across all categories for overall 100% progress
-3. Watch the confetti celebration! 🎊
+2. Watch the confetti celebration! 🎊
+3. **Uncheck one item** (progress drops to 99%)
+4. **Check it again** to reach 100% → **Confetti plays again!** 🎉
+5. Switch to another tab that's already at 100% → **No confetti** (expected)
+6. In that tab, uncheck and recheck an item → **Confetti plays!** 🎉
 
 ## Future Enhancements
 

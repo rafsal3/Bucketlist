@@ -22,16 +22,47 @@ class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
   late ConfettiController _confettiController;
   double _previousProgress = 0.0;
+  String? _previousCategoryId;
 
   @override
   void initState() {
     super.initState();
     _confettiController =
         ConfettiController(duration: const Duration(seconds: 3));
+
+    // Add listener to check for progress changes immediately
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final appState = Provider.of<AppState>(context, listen: false);
+      appState.addListener(_onAppStateChanged);
+    });
+  }
+
+  void _onAppStateChanged() {
+    if (!mounted) return;
+
+    final appState = Provider.of<AppState>(context, listen: false);
+    final visibleCategories =
+        appState.categories.where((c) => !c.isHidden).toList();
+
+    final currentProgress = _getCurrentProgress(appState, visibleCategories);
+    final categoryKey = _currentTabIndex == 0
+        ? 'all'
+        : (_currentTabIndex - 1 < visibleCategories.length
+            ? visibleCategories[_currentTabIndex - 1].id
+            : 'all');
+
+    // Use setState to ensure the confetti triggers
+    setState(() {
+      _checkAndTriggerConfetti(currentProgress, categoryKey);
+    });
   }
 
   @override
   void dispose() {
+    // Remove listener to prevent memory leaks
+    final appState = Provider.of<AppState>(context, listen: false);
+    appState.removeListener(_onAppStateChanged);
+
     _scrollController.dispose();
     _confettiController.dispose();
     super.dispose();
@@ -60,9 +91,19 @@ class _HomeScreenState extends State<HomeScreen> {
     return 0.0;
   }
 
-  void _checkAndTriggerConfetti(double currentProgress) {
+  void _checkAndTriggerConfetti(double currentProgress, String categoryKey) {
+    // Check if category changed - if so, just update tracking and don't trigger
+    if (_previousCategoryId != categoryKey) {
+      _previousProgress = currentProgress;
+      _previousCategoryId = categoryKey;
+      return;
+    }
+
     // Trigger confetti when progress reaches 100% (1.0) and it wasn't 100% before
+    // This will trigger EVERY TIME you complete a category, not just once
     if (currentProgress >= 1.0 && _previousProgress < 1.0) {
+      print(
+          '🎉 Triggering confetti! Progress: $currentProgress, Category: $categoryKey');
       _confettiController.play();
     }
     _previousProgress = currentProgress;
@@ -163,8 +204,14 @@ class _HomeScreenState extends State<HomeScreen> {
         // Get current progress and check for confetti trigger
         final currentProgress =
             _getCurrentProgress(appState, visibleCategories);
+
+        // Create a unique key for the current tab/category
+        final categoryKey = _currentTabIndex == 0
+            ? 'all'
+            : visibleCategories[_currentTabIndex - 1].id;
+
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          _checkAndTriggerConfetti(currentProgress);
+          _checkAndTriggerConfetti(currentProgress, categoryKey);
         });
 
         return Stack(
@@ -315,25 +362,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
             ),
-            // Confetti widget overlay
-            Align(
-              alignment: Alignment.topCenter,
-              child: ConfettiWidget(
-                confettiController: _confettiController,
-                blastDirection: 3.14 / 2, // downward
-                blastDirectionality: BlastDirectionality.explosive,
-                emissionFrequency: 0.05,
-                numberOfParticles: 20,
-                gravity: 0.3,
-                shouldLoop: false,
-                colors: const [
-                  Colors.green,
-                  Colors.blue,
-                  Colors.pink,
-                  Colors.orange,
-                  Colors.purple,
-                  Colors.yellow,
-                ],
+            // Confetti widget overlay - positioned on top of everything
+            IgnorePointer(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConfettiWidget(
+                  confettiController: _confettiController,
+                  blastDirection: 3.14 / 2, // downward
+                  blastDirectionality: BlastDirectionality.explosive,
+                  emissionFrequency: 0.05,
+                  numberOfParticles: 20,
+                  gravity: 0.3,
+                  shouldLoop: false,
+                  colors: const [
+                    Colors.green,
+                    Colors.blue,
+                    Colors.pink,
+                    Colors.orange,
+                    Colors.purple,
+                    Colors.yellow,
+                  ],
+                ),
               ),
             ),
           ],
