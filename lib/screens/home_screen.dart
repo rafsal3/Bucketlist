@@ -4,6 +4,7 @@ import 'package:confetti/confetti.dart';
 import '../providers/app_state.dart';
 import '../models/category_model.dart';
 import '../widgets/add_movie_modal.dart';
+import '../widgets/add_book_modal.dart';
 import '../widgets/add_item_modal.dart';
 import '../widgets/checklist_item_card.dart';
 import '../widgets/progress_ring.dart';
@@ -339,6 +340,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       _getCurrentCategoryId(appState, visibleCategories);
                   final isMoviesCategory =
                       currentCategoryId == 'default_movies';
+                  final isBooksCategory = currentCategoryId == 'default_books';
 
                   return FloatingActionButton.extended(
                     heroTag: 'add_item',
@@ -349,6 +351,15 @@ class _HomeScreenState extends State<HomeScreen> {
                           isScrollControlled: true,
                           backgroundColor: Colors.transparent,
                           builder: (context) => AddMovieModal(
+                            categoryId: currentCategoryId!,
+                          ),
+                        );
+                      } else if (isBooksCategory) {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => AddBookModal(
                             categoryId: currentCategoryId!,
                           ),
                         );
@@ -364,10 +375,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       }
                     },
                     backgroundColor: Theme.of(context).colorScheme.primary,
-                    icon: Icon(isMoviesCategory ? Icons.movie : Icons.add,
+                    icon: Icon(
+                        isMoviesCategory
+                            ? Icons.movie
+                            : isBooksCategory
+                                ? Icons.menu_book
+                                : Icons.add,
                         color: Theme.of(context).colorScheme.onPrimary),
                     label: Text(
-                      isMoviesCategory ? 'Find Movie' : 'Add Item',
+                      isMoviesCategory
+                          ? 'Find Movie'
+                          : isBooksCategory
+                              ? 'Find Book'
+                              : 'Add Item',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onPrimary,
                         fontWeight: FontWeight.w600,
