@@ -35,6 +35,20 @@ class _HomeScreenState extends State<HomeScreen> {
     return null;
   }
 
+  double _getCurrentProgress(
+      AppState appState, List<Category> visibleCategories) {
+    if (_currentTabIndex == 0) {
+      // "All" tab - show overall progress
+      return appState.overallProgress;
+    }
+    // Specific category tab - show that category's progress
+    if (_currentTabIndex - 1 < visibleCategories.length) {
+      final category = visibleCategories[_currentTabIndex - 1];
+      return category.progress;
+    }
+    return 0.0;
+  }
+
   void _showSettingsModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -154,7 +168,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                             ProgressRing(
-                              progress: appState.overallProgress,
+                              progress: _getCurrentProgress(
+                                  appState, visibleCategories),
                               size: 70,
                             ),
                             SizedBox(width: 8),
