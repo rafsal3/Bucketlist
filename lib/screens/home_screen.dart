@@ -18,6 +18,13 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentTabIndex = 0;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   String? _getCurrentCategoryId(AppState appState) {
     if (_currentTabIndex == 0) return null; // "All" tab
@@ -114,85 +121,98 @@ class _HomeScreenState extends State<HomeScreen> {
               return Center(child: CircularProgressIndicator());
             }
 
-            return Column(
-              children: [
-                // Header with progress ring
-                Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+            return NestedScrollView(
+              controller: _scrollController,
+              headerSliverBuilder:
+                  (BuildContext context, bool innerBoxIsScrolled) {
+                return <Widget>[
+                  SliverAppBar(
+                    expandedHeight: 118.0,
+                    floating: true,
+                    snap: true,
+                    pinned: false,
+                    elevation: 0,
+                    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                    surfaceTintColor: Colors.transparent,
+                    flexibleSpace: FlexibleSpaceBar(
+                      background: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Row(
                           children: [
-                            Text(
-                              'My Bucket List',
-                              style: Theme.of(context).textTheme.displayLarge,
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Image.asset(
+                                  'assets/images/bucket-icon.png',
+                                  height: 70,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
                             ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Track your life goals',
-                              style: Theme.of(context).textTheme.bodyMedium,
+                            ProgressRing(
+                              progress: appState.overallProgress,
+                              size: 70,
+                            ),
+                            SizedBox(width: 8),
+                            SizedBox(width: 8),
+                            // Settings Button
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).cardColor,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Theme.of(context).dividerColor,
+                                ),
+                              ),
+                              child: IconButton(
+                                icon: Icon(
+                                  Icons.settings_rounded,
+                                  color: Theme.of(context).iconTheme.color,
+                                ),
+                                tooltip: 'Settings',
+                                onPressed: () => _showSettingsModal(context),
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      ProgressRing(
-                        progress: appState.overallProgress,
-                        size: 70,
-                      ),
-                      SizedBox(width: 8),
-                      SizedBox(width: 8),
-                      // Settings Button
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Theme.of(context).dividerColor,
-                          ),
-                        ),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.settings_rounded,
-                            color: Theme.of(context).iconTheme.color,
-                          ),
-                          tooltip: 'Settings',
-                          onPressed: () => _showSettingsModal(context),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-
-                // Category tabs
-                Container(
-                  height: 50,
-                  child: ListView(
-                    padding: EdgeInsets.symmetric(horizontal: 24),
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      _buildTabChip('All', '📋', 0, context),
-                      for (int i = 0; i < appState.categories.length; i++) ...[
-                        SizedBox(width: 8),
-                        _buildTabChip(
-                          appState.categories[i].name,
-                          appState.categories[i].icon,
-                          i + 1,
-                          context,
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _SliverAppBarDelegate(
+                      minHeight: 50.0,
+                      maxHeight: 50.0,
+                      child: Container(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        height: 50,
+                        child: ListView(
+                          padding: EdgeInsets.symmetric(horizontal: 24),
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            _buildTabChip('All', '📋', 0, context),
+                            for (int i = 0;
+                                i < appState.categories.length;
+                                i++) ...[
+                              SizedBox(width: 8),
+                              _buildTabChip(
+                                appState.categories[i].name,
+                                appState.categories[i].icon,
+                                i + 1,
+                                context,
+                              ),
+                            ],
+                          ],
                         ),
-                      ],
-                    ],
+                      ),
+                    ),
                   ),
-                ),
-
-                SizedBox(height: 24),
-
-                // Items list
-                Expanded(
-                  child: _buildItemsList(appState),
-                ),
-              ],
+                ];
+              },
+              body: Padding(
+                padding: const EdgeInsets.only(top: 24.0),
+                child: _buildItemsList(appState),
+              ),
             );
           },
         ),
@@ -247,9 +267,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _currentTabIndex = index;
-        });
+        if (_currentTabIndex != index) {
+          setState(() {
+            _currentTabIndex = index;
+          });
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              0,
+              duration: Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        }
       },
       child: AnimatedContainer(
         duration: Duration(milliseconds: 200),
@@ -397,5 +426,36 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
     );
+  }
+}
+
+class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
+  _SliverAppBarDelegate({
+    required this.minHeight,
+    required this.maxHeight,
+    required this.child,
+  });
+
+  final double minHeight;
+  final double maxHeight;
+  final Widget child;
+
+  @override
+  double get minExtent => minHeight;
+
+  @override
+  double get maxExtent => maxHeight;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return SizedBox.expand(child: child);
+  }
+
+  @override
+  bool shouldRebuild(_SliverAppBarDelegate oldDelegate) {
+    return maxHeight != oldDelegate.maxHeight ||
+        minHeight != oldDelegate.minHeight ||
+        child != oldDelegate.child;
   }
 }
