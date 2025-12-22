@@ -7,10 +7,12 @@ class AppState extends ChangeNotifier {
   List<models.Category> _categories = [];
   bool _isLoading = true;
   bool _isDarkMode = false;
+  String _themeColor = 'blue'; // Default theme color
 
   List<models.Category> get categories => _categories;
   bool get isLoading => _isLoading;
   bool get isDarkMode => _isDarkMode;
+  String get themeColor => _themeColor;
 
   int get totalCompleted =>
       _categories.fold<int>(0, (sum, cat) => sum + cat.completedCount);
@@ -28,6 +30,7 @@ class AppState extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final String? categoriesJson = prefs.getString('categories');
       _isDarkMode = prefs.getBool('isDarkMode') ?? false;
+      _themeColor = prefs.getString('themeColor') ?? 'blue';
 
       if (categoriesJson != null) {
         final List<dynamic> decoded = jsonDecode(categoriesJson);
@@ -70,6 +73,21 @@ class AppState extends ChangeNotifier {
     _isDarkMode = !_isDarkMode;
     _saveTheme();
     notifyListeners();
+  }
+
+  void setThemeColor(String color) {
+    _themeColor = color;
+    _saveThemeColor();
+    notifyListeners();
+  }
+
+  Future<void> _saveThemeColor() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('themeColor', _themeColor);
+    } catch (e) {
+      debugPrint('Error saving theme color: $e');
+    }
   }
 
   List<models.Category> _getDefaultCategories() {

@@ -9,6 +9,7 @@ import '../widgets/checklist_item_card.dart';
 import '../widgets/progress_ring.dart';
 
 import 'manage_categories_screen.dart';
+import 'customization_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -160,6 +161,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     onChanged: (value) {
                       appState.toggleTheme();
                     },
+                  );
+                },
+              ),
+              ListTile(
+                title: Text('Customization'),
+                leading: Icon(Icons.palette_rounded),
+                trailing: Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(context); // Close the modal
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CustomizationScreen(),
+                    ),
                   );
                 },
               ),

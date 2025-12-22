@@ -2,28 +2,62 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Color Palette - Calm and Minimal
+  // Color Palettes for different themes
+  static const Map<String, Color> accentColors = {
+    'blue': Color(0xFF7C9CBF),
+    'purple': Color(0xFF9B7EBF),
+    'green': Color(0xFF7EBF9B),
+    'orange': Color(0xFFBF9B7E),
+    'pink': Color(0xFFBF7E9B),
+    'teal': Color(0xFF7EBFBF),
+  };
+
+  static const Map<String, Color> accentLightColors = {
+    'blue': Color(0xFFE8EEF5),
+    'purple': Color(0xFFF0E8F5),
+    'green': Color(0xFFE8F5F0),
+    'orange': Color(0xFFF5F0E8),
+    'pink': Color(0xFFF5E8F0),
+    'teal': Color(0xFFE8F5F5),
+  };
+
+  static const Map<String, Color> darkAccentColors = {
+    'blue': Color(0xFF8CAED1),
+    'purple': Color(0xFFAA8DD1),
+    'green': Color(0xFF8DD1AA),
+    'orange': Color(0xFFD1AA8D),
+    'pink': Color(0xFFD18DAA),
+    'teal': Color(0xFF8DD1D1),
+  };
+
+  static const Map<String, Color> darkAccentLightColors = {
+    'blue': Color(0xFF232E3A),
+    'purple': Color(0xFF2E233A),
+    'green': Color(0xFF233A2E),
+    'orange': Color(0xFF3A2E23),
+    'pink': Color(0xFF3A232E),
+    'teal': Color(0xFF233A3A),
+  };
+
+  // Base colors (unchanged)
   static const Color background = Color(0xFFFAFAFA);
   static const Color cardBackground = Color(0xFFFFFFFF);
   static const Color textPrimary = Color(0xFF2C2C2C);
   static const Color textSecondary = Color(0xFF8A8A8A);
-  static const Color accent = Color(0xFF7C9CBF); // Soft blue
-  static const Color accentLight = Color(0xFFE8EEF5);
   static const Color divider = Color(0xFFEEEEEE);
   static const Color completedItem = Color(0xFFB8B8B8);
-  static const Color surface = cardBackground; // Add surface color
+  static const Color surface = cardBackground;
 
-  // Dark Theme Colors
+  // Dark Theme Base Colors
   static const Color darkBackground = Color(0xFF121212);
   static const Color darkCardBackground = Color(0xFF1E1E1E);
   static const Color darkTextPrimary = Color(0xFFE0E0E0);
   static const Color darkTextSecondary = Color(0xFFA0A0A0);
   static const Color darkDivider = Color(0xFF2C2C2C);
-  static const Color darkAccent =
-      Color(0xFF8CAED1); // Slightly lighter for contrast
-  static const Color darkAccentLight = Color(0xFF232E3A);
 
-  static ThemeData get lightTheme {
+  static ThemeData lightTheme(String themeColor) {
+    final accent = accentColors[themeColor] ?? accentColors['blue']!;
+
     return ThemeData(
       useMaterial3: true,
       scaffoldBackgroundColor: background,
@@ -95,7 +129,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(16),
         ),
       ),
-      inputDecorationTheme: const InputDecorationTheme(
+      inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: cardBackground,
         border: OutlineInputBorder(
@@ -119,7 +153,10 @@ class AppTheme {
     );
   }
 
-  static ThemeData get darkTheme {
+  static ThemeData darkTheme(String themeColor) {
+    final darkAccent =
+        darkAccentColors[themeColor] ?? darkAccentColors['blue']!;
+
     return ThemeData(
       useMaterial3: true,
       scaffoldBackgroundColor: darkBackground,
@@ -191,7 +228,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(16),
         ),
       ),
-      inputDecorationTheme: const InputDecorationTheme(
+      inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: darkCardBackground,
         border: OutlineInputBorder(

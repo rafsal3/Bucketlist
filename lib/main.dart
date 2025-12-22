@@ -19,8 +19,8 @@ class MyApp extends StatelessWidget {
         builder: (context, appState, _) {
           return MaterialApp(
             title: 'Neela Bucket',
-            theme: AppTheme.lightTheme,
-            darkTheme: AppTheme.darkTheme,
+            theme: AppTheme.lightTheme(appState.themeColor),
+            darkTheme: AppTheme.darkTheme(appState.themeColor),
             themeMode: appState.isDarkMode ? ThemeMode.dark : ThemeMode.light,
             debugShowCheckedModeBanner: false,
             home: const HomeScreen(),
