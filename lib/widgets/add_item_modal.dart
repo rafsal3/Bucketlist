@@ -75,9 +75,11 @@ class _AddItemModalState extends State<AddItemModal> {
               TextField(
                 controller: _textController,
                 autofocus: true,
+                style: TextStyle(fontSize: 16),
                 decoration: InputDecoration(
                   hintText: 'List',
                   hintStyle: TextStyle(
+                    fontSize: 16,
                     color: Theme.of(context)
                         .textTheme
                         .bodyMedium
@@ -89,7 +91,7 @@ class _AddItemModalState extends State<AddItemModal> {
                   focusedBorder: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 0,
-                    vertical: 8,
+                    vertical: 16,
                   ),
                 ),
                 onSubmitted: (_) => _addItem(),
