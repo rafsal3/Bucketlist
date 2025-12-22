@@ -40,7 +40,7 @@ class _AddMovieModalState extends State<AddMovieModal> {
       });
     } catch (e) {
       setState(() {
-        _error = 'Failed to search movies. Please try again.';
+        _error = e.toString().replaceAll('Exception: ', '');
         _isLoading = false;
       });
     }
@@ -133,8 +133,31 @@ class _AddMovieModalState extends State<AddMovieModal> {
                 ? Center(child: CircularProgressIndicator())
                 : _error != null
                     ? Center(
-                        child:
-                            Text(_error!, style: TextStyle(color: Colors.red)))
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 64,
+                              color: Colors.red,
+                            ),
+                            SizedBox(height: 16),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 24),
+                              child: Text(
+                                _error!,
+                                style: TextStyle(color: Colors.red),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _searchMovies,
+                              child: Text('Try Again'),
+                            ),
+                          ],
+                        ),
+                      )
                     : _searchResults.isEmpty
                         ? Center(
                             child: Column(
