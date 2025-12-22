@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:confetti/confetti.dart';
 import '../providers/app_state.dart';
 import '../models/category_model.dart';
 import '../widgets/add_movie_modal.dart';
@@ -19,10 +20,20 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentTabIndex = 0;
   final ScrollController _scrollController = ScrollController();
+  late ConfettiController _confettiController;
+  double _previousProgress = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _confettiController =
+        ConfettiController(duration: const Duration(seconds: 3));
+  }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _confettiController.dispose();
     super.dispose();
   }
 
@@ -47,6 +58,14 @@ class _HomeScreenState extends State<HomeScreen> {
       return category.progress;
     }
     return 0.0;
+  }
+
+  void _checkAndTriggerConfetti(double currentProgress) {
+    // Trigger confetti when progress reaches 100% (1.0) and it wasn't 100% before
+    if (currentProgress >= 1.0 && _previousProgress < 1.0) {
+      _confettiController.play();
+    }
+    _previousProgress = currentProgress;
   }
 
   void _showSettingsModal(BuildContext context) {
@@ -127,159 +146,199 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Consumer<AppState>(
-          builder: (context, appState, child) {
-            if (appState.isLoading) {
-              return Center(child: CircularProgressIndicator());
-            }
-
-            final visibleCategories =
-                appState.categories.where((c) => !c.isHidden).toList();
-
-            return NestedScrollView(
-              controller: _scrollController,
-              headerSliverBuilder:
-                  (BuildContext context, bool innerBoxIsScrolled) {
-                return <Widget>[
-                  SliverAppBar(
-                    expandedHeight: 118.0,
-                    floating: true,
-                    snap: true,
-                    pinned: false,
-                    elevation: 0,
-                    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                    surfaceTintColor: Colors.transparent,
-                    flexibleSpace: FlexibleSpaceBar(
-                      background: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Image.asset(
-                                  'assets/images/bucket-icon.png',
-                                  height: 70,
-                                  fit: BoxFit.contain,
-                                ),
-                              ),
-                            ),
-                            ProgressRing(
-                              progress: _getCurrentProgress(
-                                  appState, visibleCategories),
-                              size: 70,
-                            ),
-                            SizedBox(width: 8),
-                            SizedBox(width: 8),
-                            // Settings Button
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).cardColor,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Theme.of(context).dividerColor,
-                                ),
-                              ),
-                              child: IconButton(
-                                icon: Icon(
-                                  Icons.settings_rounded,
-                                  color: Theme.of(context).iconTheme.color,
-                                ),
-                                tooltip: 'Settings',
-                                onPressed: () => _showSettingsModal(context),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _SliverAppBarDelegate(
-                      minHeight: 50.0,
-                      maxHeight: 50.0,
-                      child: Container(
-                        color: Theme.of(context).scaffoldBackgroundColor,
-                        height: 50,
-                        child: ListView(
-                          padding: EdgeInsets.symmetric(horizontal: 24),
-                          scrollDirection: Axis.horizontal,
-                          children: [
-                            _buildTabChip('All', '📋', 0, context),
-                            for (int i = 0;
-                                i < visibleCategories.length;
-                                i++) ...[
-                              SizedBox(width: 8),
-                              _buildTabChip(
-                                visibleCategories[i].name,
-                                visibleCategories[i].icon,
-                                i + 1,
-                                context,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ];
-              },
-              body: Padding(
-                padding: const EdgeInsets.only(top: 24.0),
-                child: _buildItemsList(appState, visibleCategories),
-              ),
-            );
-          },
-        ),
-      ),
-      floatingActionButton: Consumer<AppState>(
-        builder: (context, appState, child) {
-          final visibleCategories =
-              appState.categories.where((c) => !c.isHidden).toList();
-          final currentCategoryId =
-              _getCurrentCategoryId(appState, visibleCategories);
-          final isMoviesCategory = currentCategoryId == 'default_movies';
-
-          return FloatingActionButton.extended(
-            heroTag: 'add_item',
-            onPressed: () {
-              if (isMoviesCategory) {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (context) => AddMovieModal(
-                    categoryId: currentCategoryId!,
-                  ),
-                );
-              } else {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (context) => AddItemModal(
-                    selectedCategoryId: currentCategoryId,
-                  ),
-                );
-              }
-            },
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            icon: Icon(isMoviesCategory ? Icons.movie : Icons.add,
-                color: Theme.of(context).colorScheme.onPrimary),
-            label: Text(
-              isMoviesCategory ? 'Find Movie' : 'Add Item',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onPrimary,
-                fontWeight: FontWeight.w600,
-              ),
+    return Consumer<AppState>(
+      builder: (context, appState, child) {
+        if (appState.isLoading) {
+          return Scaffold(
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            body: SafeArea(
+              child: Center(child: CircularProgressIndicator()),
             ),
           );
-        },
-      ),
+        }
+
+        final visibleCategories =
+            appState.categories.where((c) => !c.isHidden).toList();
+
+        // Get current progress and check for confetti trigger
+        final currentProgress =
+            _getCurrentProgress(appState, visibleCategories);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _checkAndTriggerConfetti(currentProgress);
+        });
+
+        return Stack(
+          children: [
+            Scaffold(
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              body: SafeArea(
+                child: NestedScrollView(
+                  controller: _scrollController,
+                  headerSliverBuilder:
+                      (BuildContext context, bool innerBoxIsScrolled) {
+                    return <Widget>[
+                      SliverAppBar(
+                        expandedHeight: 118.0,
+                        floating: true,
+                        snap: true,
+                        pinned: false,
+                        elevation: 0,
+                        backgroundColor:
+                            Theme.of(context).scaffoldBackgroundColor,
+                        surfaceTintColor: Colors.transparent,
+                        flexibleSpace: FlexibleSpaceBar(
+                          background: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Image.asset(
+                                      'assets/images/bucket-icon.png',
+                                      height: 70,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
+                                ProgressRing(
+                                  progress: _getCurrentProgress(
+                                      appState, visibleCategories),
+                                  size: 70,
+                                ),
+                                SizedBox(width: 8),
+                                SizedBox(width: 8),
+                                // Settings Button
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).cardColor,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Theme.of(context).dividerColor,
+                                    ),
+                                  ),
+                                  child: IconButton(
+                                    icon: Icon(
+                                      Icons.settings_rounded,
+                                      color: Theme.of(context).iconTheme.color,
+                                    ),
+                                    tooltip: 'Settings',
+                                    onPressed: () =>
+                                        _showSettingsModal(context),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      SliverPersistentHeader(
+                        pinned: true,
+                        delegate: _SliverAppBarDelegate(
+                          minHeight: 50.0,
+                          maxHeight: 50.0,
+                          child: Container(
+                            color: Theme.of(context).scaffoldBackgroundColor,
+                            height: 50,
+                            child: ListView(
+                              padding: EdgeInsets.symmetric(horizontal: 24),
+                              scrollDirection: Axis.horizontal,
+                              children: [
+                                _buildTabChip('All', '📋', 0, context),
+                                for (int i = 0;
+                                    i < visibleCategories.length;
+                                    i++) ...[
+                                  SizedBox(width: 8),
+                                  _buildTabChip(
+                                    visibleCategories[i].name,
+                                    visibleCategories[i].icon,
+                                    i + 1,
+                                    context,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ];
+                  },
+                  body: Padding(
+                    padding: const EdgeInsets.only(top: 24.0),
+                    child: _buildItemsList(appState, visibleCategories),
+                  ),
+                ),
+              ),
+              floatingActionButton: Consumer<AppState>(
+                builder: (context, appState, child) {
+                  final visibleCategories =
+                      appState.categories.where((c) => !c.isHidden).toList();
+                  final currentCategoryId =
+                      _getCurrentCategoryId(appState, visibleCategories);
+                  final isMoviesCategory =
+                      currentCategoryId == 'default_movies';
+
+                  return FloatingActionButton.extended(
+                    heroTag: 'add_item',
+                    onPressed: () {
+                      if (isMoviesCategory) {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => AddMovieModal(
+                            categoryId: currentCategoryId!,
+                          ),
+                        );
+                      } else {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => AddItemModal(
+                            selectedCategoryId: currentCategoryId,
+                          ),
+                        );
+                      }
+                    },
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    icon: Icon(isMoviesCategory ? Icons.movie : Icons.add,
+                        color: Theme.of(context).colorScheme.onPrimary),
+                    label: Text(
+                      isMoviesCategory ? 'Find Movie' : 'Add Item',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            // Confetti widget overlay
+            Align(
+              alignment: Alignment.topCenter,
+              child: ConfettiWidget(
+                confettiController: _confettiController,
+                blastDirection: 3.14 / 2, // downward
+                blastDirectionality: BlastDirectionality.explosive,
+                emissionFrequency: 0.05,
+                numberOfParticles: 20,
+                gravity: 0.3,
+                shouldLoop: false,
+                colors: const [
+                  Colors.green,
+                  Colors.blue,
+                  Colors.pink,
+                  Colors.orange,
+                  Colors.purple,
+                  Colors.yellow,
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
