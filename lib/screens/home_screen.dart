@@ -3,9 +3,12 @@ import 'package:provider/provider.dart';
 import 'package:confetti/confetti.dart';
 import '../providers/app_state.dart';
 import '../models/category_model.dart';
+import '../models/space_model.dart';
 import '../widgets/add_movie_modal.dart';
 import '../widgets/add_book_modal.dart';
 import '../widgets/add_item_modal.dart';
+import '../widgets/add_space_modal.dart';
+import 'manage_spaces_screen.dart';
 import '../widgets/checklist_item_card.dart';
 import '../widgets/progress_ring.dart';
 
@@ -193,8 +196,156 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
               ),
+              ListTile(
+                title: Text('Manage Spaces'),
+                leading: Icon(Icons.space_dashboard_rounded),
+                trailing: Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(context); // Close the modal
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ManageSpacesScreen(),
+                    ),
+                  );
+                },
+              ),
               SizedBox(height: 16),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSpacesSelector(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: Offset(0, -5),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Consumer<AppState>(
+            builder: (context, appState, child) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    margin: EdgeInsets.symmetric(vertical: 12),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).dividerColor,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: Text(
+                      'My Spaces',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ),
+
+                  Flexible(
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: appState.spaces.length,
+                      itemBuilder: (context, index) {
+                        final space = appState.spaces[index];
+                        final isSelected = space.id == appState.currentSpace.id;
+
+                        return ListTile(
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withOpacity(0.1)
+                                  : Theme.of(context).cardColor,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              space.icon ?? '🚀',
+                              style: TextStyle(fontSize: 20),
+                            ),
+                          ),
+                          title: Text(
+                            space.name,
+                            style: TextStyle(
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color: isSelected
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context)
+                                      .textTheme
+                                      .bodyLarge
+                                      ?.color,
+                            ),
+                          ),
+                          trailing: isSelected
+                              ? Icon(Icons.check_circle_rounded,
+                                  color: Theme.of(context).colorScheme.primary)
+                              : null,
+                          onTap: () {
+                            appState.switchSpace(space.id);
+                            Navigator.pop(context);
+                          },
+                          onLongPress: () {
+                            if (appState.spaces.length > 1) {
+                              // Optional: Show delete dialog
+                            }
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                  // Divider removed
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (context) => AddSpaceModal(),
+                          );
+                        },
+                        icon: Icon(Icons.add_rounded),
+                        label: Text('Create New Space'),
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -257,10 +408,46 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Expanded(
                                   child: Align(
                                     alignment: Alignment.centerLeft,
-                                    child: Image.asset(
-                                      'assets/images/bucket-icon.png',
-                                      height: 70,
-                                      fit: BoxFit.contain,
+                                    child: GestureDetector(
+                                      onTap: () => _showSpacesSelector(context),
+                                      child: Container(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context).cardColor,
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              appState.currentSpace.icon ??
+                                                  '🚀',
+                                              style: TextStyle(fontSize: 24),
+                                            ),
+                                            SizedBox(width: 8),
+                                            Flexible(
+                                              child: Text(
+                                                appState.currentSpace.name,
+                                                style: TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            SizedBox(width: 4),
+                                            Icon(
+                                              Icons.keyboard_arrow_down_rounded,
+                                              color: Theme.of(context)
+                                                  .textTheme
+                                                  .bodySmall
+                                                  ?.color,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),

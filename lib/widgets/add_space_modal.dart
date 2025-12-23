@@ -2,58 +2,55 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 
-class AddCategoryModal extends StatefulWidget {
-  final String? categoryId;
+class AddSpaceModal extends StatefulWidget {
+  final String? spaceId;
   final String? initialName;
   final String? initialIcon;
 
-  const AddCategoryModal({
+  const AddSpaceModal({
     super.key,
-    this.categoryId,
+    this.spaceId,
     this.initialName,
     this.initialIcon,
   });
 
   @override
-  State<AddCategoryModal> createState() => _AddCategoryModalState();
+  State<AddSpaceModal> createState() => _AddSpaceModalState();
 }
 
-class _AddCategoryModalState extends State<AddCategoryModal> {
+class _AddSpaceModalState extends State<AddSpaceModal> {
   late TextEditingController _nameController;
   late String _selectedEmoji;
 
+  // Reusing same emoji list for consistency
   final List<String> _emojiOptions = [
-    '📝',
-    '✨',
-    '🎨',
-    '💼',
-    '🏃',
-    '🍳',
-    '🌱',
-    '💡',
-    '🎯',
     '🚀',
+    '🏠',
+    '💼',
+    '🎨',
+    '🎓',
+    '✈️',
+    '💪',
     '🎪',
-    '🎭',
+    '🧩',
+    '📚',
+    '💡',
+    '🌱',
+    '⭐',
+    '🎯',
     '🎸',
-    '⚽',
+    '🎮',
+    '🍳',
+    '📷',
     '🏔️',
     '🌊',
-    '☕',
-    '🍕',
-    '🎮',
-    '📷',
-    '✈️',
-    '🏖️',
-    '🎓',
-    '💪',
   ];
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.initialName);
-    _selectedEmoji = widget.initialIcon ?? '📝';
+    _selectedEmoji = widget.initialIcon ?? '🚀';
   }
 
   @override
@@ -62,19 +59,19 @@ class _AddCategoryModalState extends State<AddCategoryModal> {
     super.dispose();
   }
 
-  void _saveCategory() {
+  void _saveSpace() {
     if (_nameController.text.trim().isEmpty) return;
 
     final appState = Provider.of<AppState>(context, listen: false);
 
-    if (widget.categoryId != null) {
-      appState.editCategory(
-        widget.categoryId!,
+    if (widget.spaceId != null) {
+      appState.editSpace(
+        widget.spaceId!,
         _nameController.text.trim(),
         _selectedEmoji,
       );
     } else {
-      appState.addCategory(_nameController.text.trim(), _selectedEmoji);
+      appState.addSpace(_nameController.text.trim(), _selectedEmoji);
     }
 
     Navigator.of(context).pop();
@@ -82,7 +79,7 @@ class _AddCategoryModalState extends State<AddCategoryModal> {
 
   @override
   Widget build(BuildContext context) {
-    final isEditing = widget.categoryId != null;
+    final isEditing = widget.spaceId != null;
 
     return Container(
       padding: EdgeInsets.only(
@@ -101,20 +98,24 @@ class _AddCategoryModalState extends State<AddCategoryModal> {
         children: [
           // Title
           Text(
-            isEditing ? 'Edit Category' : 'Add Category',
+            isEditing ? 'Edit Space' : 'New Space',
             style: Theme.of(context).textTheme.displayMedium,
           ),
           SizedBox(height: 24),
 
-          // Category Name Input
+          // Space Name Input
           TextField(
             controller: _nameController,
             autofocus: true,
             decoration: InputDecoration(
-              hintText: 'Category name',
+              hintText: 'Space name (e.g. Work, Home)',
+              labelText: 'Name',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            textCapitalization: TextCapitalization.words,
-            onSubmitted: (_) => _saveCategory(),
+            textCapitalization: TextCapitalization.sentences,
+            onSubmitted: (_) => _saveSpace(),
           ),
           SizedBox(height: 24),
 
@@ -169,11 +170,11 @@ class _AddCategoryModalState extends State<AddCategoryModal> {
           ),
           SizedBox(height: 24),
 
-          // Create Button
+          // Create/Save Button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _saveCategory,
+              onPressed: _saveSpace,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
@@ -184,7 +185,7 @@ class _AddCategoryModalState extends State<AddCategoryModal> {
                 elevation: 0,
               ),
               child: Text(
-                'Create Category',
+                isEditing ? 'Save Changes' : 'Create Space',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../widgets/add_category_modal.dart';
+import '../widgets/add_space_modal.dart';
 import '../providers/app_state.dart';
 
-class ManageCategoriesScreen extends StatelessWidget {
-  const ManageCategoriesScreen({super.key});
+class ManageSpacesScreen extends StatelessWidget {
+  const ManageSpacesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +19,7 @@ class ManageCategoriesScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Manage Categories',
+          'Manage Spaces',
           style: TextStyle(
             color: Theme.of(context).textTheme.titleLarge?.color,
             fontWeight: FontWeight.bold,
@@ -28,10 +28,10 @@ class ManageCategoriesScreen extends StatelessWidget {
       ),
       body: Consumer<AppState>(
         builder: (context, appState, child) {
-          if (appState.categories.isEmpty) {
+          if (appState.spaces.isEmpty) {
             return Center(
               child: Text(
-                'No categories found',
+                'No spaces found',
                 style: TextStyle(
                     color: Theme.of(context).textTheme.bodyMedium?.color),
               ),
@@ -40,13 +40,13 @@ class ManageCategoriesScreen extends StatelessWidget {
 
           return ReorderableListView.builder(
             padding: EdgeInsets.all(16),
-            itemCount: appState.categories.length,
+            itemCount: appState.spaces.length,
             onReorder: (oldIndex, newIndex) {
-              appState.reorderCategories(oldIndex, newIndex);
+              appState.reorderSpaces(oldIndex, newIndex);
             },
             itemBuilder: (context, index) {
-              final category = appState.categories[index];
-              return _buildCategoryItem(context, category, appState, index);
+              final space = appState.spaces[index];
+              return _buildSpaceItem(context, space, appState, index);
             },
             proxyDecorator: (child, index, animation) {
               return Material(
@@ -64,7 +64,7 @@ class ManageCategoriesScreen extends StatelessWidget {
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
-            builder: (context) => AddCategoryModal(),
+            builder: (context) => AddSpaceModal(),
           );
         },
         backgroundColor: Theme.of(context).cardColor,
@@ -73,10 +73,10 @@ class ManageCategoriesScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryItem(
-      BuildContext context, dynamic category, AppState appState, int index) {
+  Widget _buildSpaceItem(
+      BuildContext context, dynamic space, AppState appState, int index) {
     return Container(
-      key: ValueKey(category.id),
+      key: ValueKey(space.id),
       margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
@@ -100,12 +100,12 @@ class ManageCategoriesScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
-            category.icon,
+            space.icon ?? '🚀',
             style: TextStyle(fontSize: 24),
           ),
         ),
         title: Text(
-          category.name,
+          space.name,
           style: TextStyle(
             fontWeight: FontWeight.w600,
             color: Theme.of(context).textTheme.titleMedium?.color,
@@ -113,7 +113,7 @@ class ManageCategoriesScreen extends StatelessWidget {
           ),
         ),
         subtitle: Text(
-          '${category.totalCount} items',
+          '${space.categories.length} categories',
           style: TextStyle(
             color: Theme.of(context).textTheme.bodyMedium?.color,
             fontSize: 12,
@@ -130,27 +130,28 @@ class ManageCategoriesScreen extends StatelessWidget {
                   context: context,
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
-                  builder: (context) => AddCategoryModal(
-                    categoryId: category.id,
-                    initialName: category.name,
-                    initialIcon: category.icon,
+                  builder: (context) => AddSpaceModal(
+                    spaceId: space.id,
+                    initialName: space.name,
+                    initialIcon: space.icon,
                   ),
                 );
               },
             ),
             IconButton(
               icon: Icon(
-                category.isHidden
+                space.isHidden
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined,
                 color: Theme.of(context).textTheme.bodyMedium?.color,
               ),
-              onPressed: () => appState.toggleCategoryVisibility(category.id),
+              onPressed: () => appState.toggleSpaceVisibility(space.id),
             ),
             IconButton(
               icon: Icon(Icons.delete_outline, color: Colors.red[400]),
-              onPressed: () =>
-                  _showDeleteConfirmation(context, appState, category),
+              onPressed: appState.spaces.length > 1
+                  ? () => _showDeleteConfirmation(context, appState, space)
+                  : null,
             ),
             ReorderableDragStartListener(
               index: index,
@@ -167,16 +168,16 @@ class ManageCategoriesScreen extends StatelessWidget {
   }
 
   void _showDeleteConfirmation(
-      BuildContext context, AppState appState, dynamic category) {
+      BuildContext context, AppState appState, dynamic space) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Theme.of(context).cardColor,
-        title: Text('Delete Category?',
+        title: Text('Delete Space?',
             style: TextStyle(
                 color: Theme.of(context).textTheme.titleLarge?.color)),
         content: Text(
-          'Are you sure you want to delete "${category.name}"? This will also delete all ${category.totalCount} items in it.',
+          'Are you sure you want to delete "${space.name}"? This will delete all categories and items within it.',
           style:
               TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
         ),
@@ -189,7 +190,7 @@ class ManageCategoriesScreen extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              appState.deleteCategory(category.id);
+              appState.deleteSpace(space.id);
               Navigator.pop(context);
             },
             child: Text('Delete', style: TextStyle(color: Colors.red)),

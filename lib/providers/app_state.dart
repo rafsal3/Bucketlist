@@ -2,22 +2,34 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/category_model.dart' as models;
+import '../models/space_model.dart';
 
 class AppState extends ChangeNotifier {
-  List<models.Category> _categories = [];
+  List<Space> _spaces = [];
+  String _currentSpaceId = '';
   bool _isLoading = true;
   bool _isDarkMode = false;
   String _themeColor = 'blue'; // Default theme color
 
-  List<models.Category> get categories => _categories;
+  // Getters for the current space
+  Space get currentSpace => _spaces.firstWhere(
+        (s) => s.id == _currentSpaceId,
+        orElse: () => _spaces.isNotEmpty
+            ? _spaces.first
+            : Space(id: 'temp', name: 'Loading', categories: []),
+      );
+
+  List<Space> get spaces => _spaces;
+  List<models.Category> get categories => currentSpace.categories;
+
   bool get isLoading => _isLoading;
   bool get isDarkMode => _isDarkMode;
   String get themeColor => _themeColor;
 
   int get totalCompleted =>
-      _categories.fold<int>(0, (sum, cat) => sum + cat.completedCount);
+      categories.fold<int>(0, (sum, cat) => sum + cat.completedCount);
   int get totalItems =>
-      _categories.fold<int>(0, (sum, cat) => sum + cat.totalCount);
+      categories.fold<int>(0, (sum, cat) => sum + cat.totalCount);
   double get overallProgress =>
       totalItems == 0 ? 0.0 : totalCompleted / totalItems;
 
@@ -28,21 +40,63 @@ class AppState extends ChangeNotifier {
   Future<void> _loadData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final String? categoriesJson = prefs.getString('categories');
       _isDarkMode = prefs.getBool('isDarkMode') ?? false;
       _themeColor = prefs.getString('themeColor') ?? 'blue';
 
-      if (categoriesJson != null) {
-        final List<dynamic> decoded = jsonDecode(categoriesJson);
-        _categories =
-            decoded.map((json) => models.Category.fromJson(json)).toList();
+      final String? spacesJson = prefs.getString('spaces');
+
+      if (spacesJson != null) {
+        // Load spaces directly
+        final List<dynamic> decoded = jsonDecode(spacesJson);
+        _spaces = decoded.map((json) => Space.fromJson(json)).toList();
+        _currentSpaceId = prefs.getString('currentSpaceId') ??
+            (_spaces.isNotEmpty ? _spaces.first.id : '');
       } else {
-        // Initialize with default categories
-        _categories = _getDefaultCategories();
+        // Legacy migration or fresh install
+        final String? categoriesJson = prefs.getString('categories');
+        List<models.Category> initialCategories;
+
+        if (categoriesJson != null) {
+          // Migration: Load existing categories
+          final List<dynamic> decoded = jsonDecode(categoriesJson);
+          initialCategories =
+              decoded.map((json) => models.Category.fromJson(json)).toList();
+        } else {
+          // Fresh install: Default categories
+          initialCategories = _getDefaultCategories();
+        }
+
+        // Create default "Personal" space
+        final personalSpace = Space(
+          id: 'personal_space',
+          name: 'Personal',
+          icon: '👤',
+          categories: initialCategories,
+        );
+
+        _spaces = [personalSpace];
+        _currentSpaceId = personalSpace.id;
+
+        // Save immediately to complete migration
+        _saveData();
+      }
+
+      // Safety check if currentSpaceId is invalid
+      if (!_spaces.any((s) => s.id == _currentSpaceId) && _spaces.isNotEmpty) {
+        _currentSpaceId = _spaces.first.id;
       }
     } catch (e) {
       debugPrint('Error loading data: $e');
-      _categories = _getDefaultCategories();
+      // Fallback
+      _spaces = [
+        Space(
+          id: 'personal_space',
+          name: 'Personal',
+          icon: '👤',
+          categories: _getDefaultCategories(),
+        )
+      ];
+      _currentSpaceId = 'personal_space';
     }
 
     _isLoading = false;
@@ -52,9 +106,14 @@ class AppState extends ChangeNotifier {
   Future<void> _saveData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+
+      // Save spaces
       final String encoded =
-          jsonEncode(_categories.map((cat) => cat.toJson()).toList());
-      await prefs.setString('categories', encoded);
+          jsonEncode(_spaces.map((space) => space.toJson()).toList());
+      await prefs.setString('spaces', encoded);
+
+      // Save current space selection
+      await prefs.setString('currentSpaceId', _currentSpaceId);
     } catch (e) {
       debugPrint('Error saving data: $e');
     }
@@ -125,19 +184,102 @@ class AppState extends ChangeNotifier {
     ];
   }
 
+  // Space Management
+  // Space Management
+  void addSpace(String name, String icon) {
+    // Generate a unique ID
+    final id = 'space_${DateTime.now().millisecondsSinceEpoch}';
+
+    final newSpace = Space(
+      id: id,
+      name: name,
+      icon: icon,
+      categories: _getDefaultCategories(),
+    );
+
+    _spaces.add(newSpace);
+    _currentSpaceId = id; // Switch to new space automatically
+    _saveData();
+    notifyListeners();
+  }
+
+  void editSpace(String spaceId, String name, String icon) {
+    final spaceIndex = _spaces.indexWhere((s) => s.id == spaceId);
+    if (spaceIndex != -1) {
+      _spaces[spaceIndex].name = name;
+      _spaces[spaceIndex].icon = icon;
+      _saveData();
+      notifyListeners();
+    }
+  }
+
+  void toggleSpaceVisibility(String spaceId) {
+    // Prevent hiding the current space or the last visible space if possible,
+    // but for now just toggle.
+    final spaceIndex = _spaces.indexWhere((s) => s.id == spaceId);
+    if (spaceIndex != -1) {
+      _spaces[spaceIndex].isHidden = !_spaces[spaceIndex].isHidden;
+      _saveData();
+      notifyListeners();
+    }
+  }
+
+  void reorderSpaces(int oldIndex, int newIndex) {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final space = _spaces.removeAt(oldIndex);
+    _spaces.insert(newIndex, space);
+    _saveData();
+    notifyListeners();
+  }
+
+  void switchSpace(String spaceId) {
+    if (_spaces.any((s) => s.id == spaceId)) {
+      _currentSpaceId = spaceId;
+      _saveData();
+      notifyListeners();
+    }
+  }
+
+  void deleteSpace(String spaceId) {
+    if (_spaces.length <= 1) return; // Prevent deleting last space
+
+    _spaces.removeWhere((s) => s.id == spaceId);
+
+    if (_currentSpaceId == spaceId) {
+      // Switch to the first available space
+      _currentSpaceId = _spaces.first.id;
+    }
+
+    _saveData();
+    notifyListeners();
+  }
+
   void addCategory(String name, String icon) {
     final category = models.Category(
       id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
       name: name,
       icon: icon,
     );
-    _categories.add(category);
+    currentSpace.categories.add(category);
     _saveData();
     notifyListeners();
   }
 
+  void editCategory(String categoryId, String name, String icon) {
+    final categoryIndex =
+        currentSpace.categories.indexWhere((cat) => cat.id == categoryId);
+    if (categoryIndex != -1) {
+      currentSpace.categories[categoryIndex].name = name;
+      currentSpace.categories[categoryIndex].icon = icon;
+      _saveData();
+      notifyListeners();
+    }
+  }
+
   void deleteCategory(String categoryId) {
-    _categories.removeWhere((cat) => cat.id == categoryId);
+    currentSpace.categories.removeWhere((cat) => cat.id == categoryId);
     _saveData();
     notifyListeners();
   }
@@ -145,7 +287,7 @@ class AppState extends ChangeNotifier {
   // Get all items across all visible categories
   List<models.ChecklistItem> getAllItems() {
     List<models.ChecklistItem> allItems = [];
-    for (var category in _categories) {
+    for (var category in categories) {
       if (!category.isHidden) {
         allItems.addAll(category.items);
       }
@@ -171,13 +313,13 @@ class AppState extends ChangeNotifier {
     );
 
     if (categoryId != null) {
-      final category = _categories.firstWhere((cat) => cat.id == categoryId);
+      final category = categories.firstWhere((cat) => cat.id == categoryId);
       category.items.insert(0, item);
     } else {
       // For uncategorized items, we'll add them to a special handling
       // They will be stored in the first category but marked as uncategorized
-      if (_categories.isNotEmpty) {
-        _categories.first.items.insert(0, item);
+      if (categories.isNotEmpty) {
+        categories.first.items.insert(0, item);
       }
     }
     _saveData();
@@ -186,10 +328,10 @@ class AppState extends ChangeNotifier {
 
   void reorderItems(String categoryId, int oldIndex, int newIndex) {
     // Find the category
-    final categoryIndex = _categories.indexWhere((cat) => cat.id == categoryId);
+    final categoryIndex = categories.indexWhere((cat) => cat.id == categoryId);
     if (categoryIndex == -1) return;
 
-    final category = _categories[categoryIndex];
+    final category = categories[categoryIndex];
 
     // Adjust newIndex if moving down
     if (oldIndex < newIndex) {
@@ -208,24 +350,23 @@ class AppState extends ChangeNotifier {
     if (oldIndex < newIndex) {
       newIndex -= 1;
     }
-    final category = _categories.removeAt(oldIndex);
-    _categories.insert(newIndex, category);
+    final category = categories.removeAt(oldIndex);
+    categories.insert(newIndex, category);
     _saveData();
     notifyListeners();
   }
 
   void toggleCategoryVisibility(String categoryId) {
-    final categoryIndex = _categories.indexWhere((cat) => cat.id == categoryId);
+    final categoryIndex = categories.indexWhere((cat) => cat.id == categoryId);
     if (categoryIndex != -1) {
-      _categories[categoryIndex].isHidden =
-          !_categories[categoryIndex].isHidden;
+      categories[categoryIndex].isHidden = !categories[categoryIndex].isHidden;
       _saveData();
       notifyListeners();
     }
   }
 
   void toggleItem(String itemId) {
-    for (var category in _categories) {
+    for (var category in categories) {
       final itemIndex = category.items.indexWhere((item) => item.id == itemId);
       if (itemIndex != -1) {
         category.items[itemIndex].isCompleted =
@@ -238,7 +379,7 @@ class AppState extends ChangeNotifier {
   }
 
   void deleteItem(String itemId) {
-    for (var category in _categories) {
+    for (var category in categories) {
       category.items.removeWhere((item) => item.id == itemId);
     }
     _saveData();
@@ -249,7 +390,7 @@ class AppState extends ChangeNotifier {
     models.ChecklistItem? itemToMove;
 
     // Find and remove the item from its current category
-    for (var category in _categories) {
+    for (var category in categories) {
       final itemIndex = category.items.indexWhere((item) => item.id == itemId);
       if (itemIndex != -1) {
         itemToMove = category.items.removeAt(itemIndex);
@@ -262,12 +403,12 @@ class AppState extends ChangeNotifier {
 
       if (newCategoryId != null) {
         final newCategory =
-            _categories.firstWhere((cat) => cat.id == newCategoryId);
+            categories.firstWhere((cat) => cat.id == newCategoryId);
         newCategory.items.insert(0, itemToMove); // Insert at beginning
       } else {
         // Move to uncategorized
-        if (_categories.isNotEmpty) {
-          _categories.first.items.insert(0, itemToMove); // Insert at beginning
+        if (categories.isNotEmpty) {
+          categories.first.items.insert(0, itemToMove); // Insert at beginning
         }
       }
 
@@ -278,7 +419,7 @@ class AppState extends ChangeNotifier {
 
   // Get items for a specific category
   List<models.ChecklistItem> getItemsForCategory(String categoryId) {
-    final category = _categories.firstWhere(
+    final category = categories.firstWhere(
       (cat) => cat.id == categoryId,
       orElse: () => models.Category(id: '', name: '', icon: ''),
     );
@@ -291,7 +432,7 @@ class AppState extends ChangeNotifier {
   // Get uncategorized items
   List<models.ChecklistItem> getUncategorizedItems() {
     List<models.ChecklistItem> uncategorized = [];
-    for (var category in _categories) {
+    for (var category in categories) {
       uncategorized
           .addAll(category.items.where((item) => item.categoryId == null));
     }
