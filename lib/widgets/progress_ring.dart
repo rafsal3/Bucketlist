@@ -74,8 +74,8 @@ class _ProgressRingState extends State<ProgressRing>
       _hasShownWink = true;
     });
 
-    // Hide the wink after 1 second
-    Future.delayed(const Duration(milliseconds: 1000), () {
+    // Hide the wink after 2 seconds
+    Future.delayed(const Duration(milliseconds: 2000), () {
       if (mounted) {
         setState(() {
           _showWink = false;
