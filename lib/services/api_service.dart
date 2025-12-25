@@ -238,6 +238,38 @@ class ApiService {
     }
   }
 
+  /// Toggle space visibility
+  Future<Map<String, dynamic>> toggleSpaceVisibility(
+      String spaceId, bool isHidden) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/spaces/$spaceId/visibility'),
+        headers: _getHeaders(),
+        body: jsonEncode({'isHidden': isHidden}),
+      );
+      final data = _handleResponse(response);
+      return data['data'];
+    } catch (e) {
+      debugPrint('Toggle space visibility error: $e');
+      rethrow;
+    }
+  }
+
+  /// Reorder spaces
+  Future<void> reorderSpaces(List<String> spaceIds) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/spaces/reorder'),
+        headers: _getHeaders(),
+        body: jsonEncode({'spaceIds': spaceIds}),
+      );
+      _handleResponse(response);
+    } catch (e) {
+      debugPrint('Reorder spaces error: $e');
+      rethrow;
+    }
+  }
+
   // ==================== CATEGORIES ====================
 
   /// Get all categories for a space
@@ -278,6 +310,79 @@ class ApiService {
       return data['data'];
     } catch (e) {
       debugPrint('Create category error: $e');
+      rethrow;
+    }
+  }
+
+  /// Update category
+  Future<Map<String, dynamic>> updateCategory({
+    required String spaceId,
+    required String categoryId,
+    required String name,
+    required String icon,
+  }) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/spaces/$spaceId/categories/$categoryId'),
+        headers: _getHeaders(),
+        body: jsonEncode({
+          'name': name,
+          'icon': icon,
+        }),
+      );
+
+      final data = _handleResponse(response);
+      return data['data'];
+    } catch (e) {
+      debugPrint('Update category error: $e');
+      rethrow;
+    }
+  }
+
+  /// Delete category
+  Future<void> deleteCategory(String spaceId, String categoryId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/spaces/$spaceId/categories/$categoryId'),
+        headers: _getHeaders(),
+      );
+
+      _handleResponse(response);
+    } catch (e) {
+      debugPrint('Delete category error: $e');
+      rethrow;
+    }
+  }
+
+  /// Toggle category visibility
+  Future<Map<String, dynamic>> toggleCategoryVisibility(
+      String spaceId, String categoryId, bool isHidden) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/spaces/$spaceId/categories/$categoryId/visibility'),
+        headers: _getHeaders(),
+        body: jsonEncode({'isHidden': isHidden}),
+      );
+      final data = _handleResponse(response);
+      return data['data'];
+    } catch (e) {
+      debugPrint('Toggle category visibility error: $e');
+      rethrow;
+    }
+  }
+
+  /// Reorder categories
+  Future<void> reorderCategories(
+      String spaceId, List<String> categoryIds) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/spaces/$spaceId/categories/reorder'),
+        headers: _getHeaders(),
+        body: jsonEncode({'categoryIds': categoryIds}),
+      );
+      _handleResponse(response);
+    } catch (e) {
+      debugPrint('Reorder categories error: $e');
       rethrow;
     }
   }
@@ -371,6 +476,67 @@ class ApiService {
       _handleResponse(response);
     } catch (e) {
       debugPrint('Delete item error: $e');
+      rethrow;
+    }
+  }
+
+  /// Update item
+  Future<Map<String, dynamic>> updateItem({
+    required String spaceId,
+    required String itemId,
+    String? text,
+    String? imageUrl,
+    String? description,
+  }) async {
+    try {
+      final body = <String, dynamic>{};
+      if (text != null) body['text'] = text;
+      if (imageUrl != null) body['imageUrl'] = imageUrl;
+      if (description != null) body['description'] = description;
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/spaces/$spaceId/items/$itemId'),
+        headers: _getHeaders(),
+        body: jsonEncode(body),
+      );
+
+      final data = _handleResponse(response);
+      return data['data'];
+    } catch (e) {
+      debugPrint('Update item error: $e');
+      rethrow;
+    }
+  }
+
+  /// Move item to category
+  Future<void> moveItem(
+      String spaceId, String itemId, String? categoryId) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/spaces/$spaceId/items/$itemId/move'),
+        headers: _getHeaders(),
+        body: jsonEncode({'categoryId': categoryId}),
+      );
+      _handleResponse(response);
+    } catch (e) {
+      debugPrint('Move item error: $e');
+      rethrow;
+    }
+  }
+
+  /// Reorder items
+  Future<void> reorderItems(
+      String spaceId, String categoryId, List<String> itemIds) async {
+    try {
+      final response = await http.patch(
+        Uri.parse(
+            '$baseUrl/spaces/$spaceId/categories/$categoryId/items/reorder'),
+        headers: _getHeaders(),
+        body: jsonEncode({'itemIds': itemIds}),
+      );
+      _handleResponse(response);
+    } catch (e) {
+      debugPrint('Reorder items error: $e');
       rethrow;
     }
   }

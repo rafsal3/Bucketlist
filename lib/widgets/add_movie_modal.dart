@@ -18,7 +18,7 @@ class AddMovieModal extends StatefulWidget {
 
 class _AddMovieModalState extends State<AddMovieModal> {
   final TextEditingController _searchController = TextEditingController();
-  final TMDBService _tmdbService = TMDBService();
+  // final TMDBService _tmdbService = TMDBService();
   List<TMDBMovie> _searchResults = [];
   bool _isLoading = false;
   String? _error;
@@ -33,14 +33,19 @@ class _AddMovieModalState extends State<AddMovieModal> {
     });
 
     try {
-      final results = await _tmdbService.searchMovies(query);
+      final appState = Provider.of<AppState>(context, listen: false);
+      final Map<String, dynamic> response =
+          await appState.apiService.searchMovies(query);
+      final List<dynamic> results = response['results'] ?? [];
+
       setState(() {
-        _searchResults = results;
+        _searchResults =
+            results.map((json) => TMDBMovie.fromJson(json)).toList();
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
-        _error = e.toString().replaceAll('Exception: ', '');
+        _error = 'Failed to search movies. Please try again.';
         _isLoading = false;
       });
     }

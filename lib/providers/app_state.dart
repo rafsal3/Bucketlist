@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/category_model.dart' as models;
@@ -66,60 +65,26 @@ class AppState extends ChangeNotifier {
         _apiService.setToken(_authToken);
       }
 
-      final String? spacesJson = prefs.getString('spaces');
-
-      if (spacesJson != null) {
-        // Load spaces directly
-        final List<dynamic> decoded = jsonDecode(spacesJson);
-        _spaces = decoded.map((json) => Space.fromJson(json)).toList();
-        _currentSpaceId = prefs.getString('currentSpaceId') ??
-            (_spaces.isNotEmpty ? _spaces.first.id : '');
+      if (_isAuthenticated && _authToken != null) {
+        await _fetchInitialData();
       } else {
-        // Legacy migration or fresh install
-        final String? categoriesJson = prefs.getString('categories');
-        List<models.Category> initialCategories;
-
-        if (categoriesJson != null) {
-          // Migration: Load existing categories
-          final List<dynamic> decoded = jsonDecode(categoriesJson);
-          initialCategories =
-              decoded.map((json) => models.Category.fromJson(json)).toList();
-        } else {
-          // Fresh install: Default categories
-          initialCategories = _getDefaultCategories();
+        // Fallback for unauthenticated state (shouldn't happen in pure API mode, but safe to keep empty)
+        // Or if we want to allow offline access to previously cached data, we'd need to keep loading it.
+        // User requested removing dummy/local data, so we'll just initialize empty or basic.
+        if (_spaces.isEmpty) {
+          _spaces = [
+            Space(
+              id: 'personal_space',
+              name: 'Personal',
+              icon: '👤',
+              categories: [],
+            )
+          ];
+          _currentSpaceId = 'personal_space';
         }
-
-        // Create default "Personal" space
-        final personalSpace = Space(
-          id: 'personal_space',
-          name: 'Personal',
-          icon: '👤',
-          categories: initialCategories,
-        );
-
-        _spaces = [personalSpace];
-        _currentSpaceId = personalSpace.id;
-
-        // Save immediately to complete migration
-        _saveData();
-      }
-
-      // Safety check if currentSpaceId is invalid
-      if (!_spaces.any((s) => s.id == _currentSpaceId) && _spaces.isNotEmpty) {
-        _currentSpaceId = _spaces.first.id;
       }
     } catch (e) {
       debugPrint('Error loading data: $e');
-      // Fallback
-      _spaces = [
-        Space(
-          id: 'personal_space',
-          name: 'Personal',
-          icon: '👤',
-          categories: _getDefaultCategories(),
-        )
-      ];
-      _currentSpaceId = 'personal_space';
     }
 
     _isLoading = false;
@@ -129,14 +94,6 @@ class AppState extends ChangeNotifier {
   Future<void> _saveData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-
-      // Save spaces
-      final String encoded =
-          jsonEncode(_spaces.map((space) => space.toJson()).toList());
-      await prefs.setString('spaces', encoded);
-
-      // Save current space selection
-      await prefs.setString('currentSpaceId', _currentSpaceId);
 
       // Save authentication state
       await prefs.setBool('isAuthenticated', _isAuthenticated);
@@ -216,102 +173,116 @@ class AppState extends ChangeNotifier {
 
   // Space Management
   // Space Management
-  void addSpace(String name, String icon) {
-    // Generate a unique ID
-    final id = 'space_${DateTime.now().millisecondsSinceEpoch}';
+  Future<void> addSpace(String name, String icon) async {
+    try {
+      final newSpaceData =
+          await _apiService.createSpace(name: name, icon: icon);
+      // Add default categories
+      final defaultCats = _getDefaultCategories();
+      for (var cat in defaultCats) {
+        await _apiService.createCategory(
+            spaceId: newSpaceData['id'], name: cat.name, icon: cat.icon);
+      }
 
-    final newSpace = Space(
-      id: id,
-      name: name,
-      icon: icon,
-      categories: _getDefaultCategories(),
-    );
-
-    _spaces.add(newSpace);
-    _currentSpaceId = id; // Switch to new space automatically
-    _saveData();
-    notifyListeners();
-  }
-
-  void editSpace(String spaceId, String name, String icon) {
-    final spaceIndex = _spaces.indexWhere((s) => s.id == spaceId);
-    if (spaceIndex != -1) {
-      _spaces[spaceIndex].name = name;
-      _spaces[spaceIndex].icon = icon;
-      _saveData();
-      notifyListeners();
+      await _fetchInitialData();
+      switchSpace(newSpaceData['id']);
+    } catch (e) {
+      debugPrint('Error adding space: $e');
     }
   }
 
-  void toggleSpaceVisibility(String spaceId) {
-    // Prevent hiding the current space or the last visible space if possible,
-    // but for now just toggle.
-    final spaceIndex = _spaces.indexWhere((s) => s.id == spaceId);
-    if (spaceIndex != -1) {
-      _spaces[spaceIndex].isHidden = !_spaces[spaceIndex].isHidden;
-      _saveData();
-      notifyListeners();
+  Future<void> editSpace(String spaceId, String name, String icon) async {
+    try {
+      await _apiService.updateSpace(spaceId: spaceId, name: name, icon: icon);
+      await _fetchInitialData();
+    } catch (e) {
+      debugPrint('Error editing space: $e');
     }
   }
 
-  void reorderSpaces(int oldIndex, int newIndex) {
+  Future<void> toggleSpaceVisibility(String spaceId) async {
+    final spaceIndex = _spaces.indexWhere((s) => s.id == spaceId);
+    if (spaceIndex != -1) {
+      final space = _spaces[spaceIndex];
+      // Optimistic update
+      space.isHidden = !space.isHidden;
+      notifyListeners();
+
+      try {
+        await _apiService.toggleSpaceVisibility(spaceId, space.isHidden);
+      } catch (e) {
+        debugPrint('Error toggling space visibility: $e');
+        // Revert
+        space.isHidden = !space.isHidden;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> reorderSpaces(int oldIndex, int newIndex) async {
     if (oldIndex < newIndex) {
       newIndex -= 1;
     }
     final space = _spaces.removeAt(oldIndex);
     _spaces.insert(newIndex, space);
-    _saveData();
     notifyListeners();
+
+    try {
+      final spaceIds = _spaces.map((s) => s.id).toList();
+      await _apiService.reorderSpaces(spaceIds);
+    } catch (e) {
+      debugPrint('Error reordering spaces: $e');
+      await _fetchInitialData();
+    }
   }
 
   void switchSpace(String spaceId) {
     if (_spaces.any((s) => s.id == spaceId)) {
       _currentSpaceId = spaceId;
-      _saveData();
+      _loadSpaceDetails(spaceId); // Fetch details on switch
       notifyListeners();
     }
   }
 
-  void deleteSpace(String spaceId) {
-    if (_spaces.length <= 1) return; // Prevent deleting last space
-
-    _spaces.removeWhere((s) => s.id == spaceId);
-
-    if (_currentSpaceId == spaceId) {
-      // Switch to the first available space
-      _currentSpaceId = _spaces.first.id;
-    }
-
-    _saveData();
-    notifyListeners();
-  }
-
-  void addCategory(String name, String icon) {
-    final category = models.Category(
-      id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
-      name: name,
-      icon: icon,
-    );
-    currentSpace.categories.add(category);
-    _saveData();
-    notifyListeners();
-  }
-
-  void editCategory(String categoryId, String name, String icon) {
-    final categoryIndex =
-        currentSpace.categories.indexWhere((cat) => cat.id == categoryId);
-    if (categoryIndex != -1) {
-      currentSpace.categories[categoryIndex].name = name;
-      currentSpace.categories[categoryIndex].icon = icon;
-      _saveData();
-      notifyListeners();
+  Future<void> deleteSpace(String spaceId) async {
+    try {
+      await _apiService.deleteSpace(spaceId);
+      await _fetchInitialData();
+    } catch (e) {
+      debugPrint('Error deleting space: $e');
     }
   }
 
-  void deleteCategory(String categoryId) {
-    currentSpace.categories.removeWhere((cat) => cat.id == categoryId);
-    _saveData();
-    notifyListeners();
+  Future<void> addCategory(String name, String icon) async {
+    try {
+      await _apiService.createCategory(
+          spaceId: _currentSpaceId, name: name, icon: icon);
+      await _loadSpaceDetails(_currentSpaceId);
+    } catch (e) {
+      debugPrint('Error adding category: $e');
+    }
+  }
+
+  Future<void> editCategory(String categoryId, String name, String icon) async {
+    try {
+      await _apiService.updateCategory(
+          spaceId: _currentSpaceId,
+          categoryId: categoryId,
+          name: name,
+          icon: icon);
+      await _loadSpaceDetails(_currentSpaceId);
+    } catch (e) {
+      debugPrint('Error editing category: $e');
+    }
+  }
+
+  Future<void> deleteCategory(String categoryId) async {
+    try {
+      await _apiService.deleteCategory(_currentSpaceId, categoryId);
+      await _loadSpaceDetails(_currentSpaceId);
+    } catch (e) {
+      debugPrint('Error deleting category: $e');
+    }
   }
 
   // Get all items across all visible categories
@@ -332,31 +303,23 @@ class AppState extends ChangeNotifier {
     return allItems;
   }
 
-  void addItem(String? categoryId, String text,
-      {String? imageUrl, String? description}) {
-    final item = models.ChecklistItem(
-      id: 'item_${DateTime.now().millisecondsSinceEpoch}',
-      text: text,
-      categoryId: categoryId,
-      imageUrl: imageUrl,
-      description: description,
-    );
-
-    if (categoryId != null) {
-      final category = categories.firstWhere((cat) => cat.id == categoryId);
-      category.items.insert(0, item);
-    } else {
-      // For uncategorized items, we'll add them to a special handling
-      // They will be stored in the first category but marked as uncategorized
-      if (categories.isNotEmpty) {
-        categories.first.items.insert(0, item);
-      }
+  Future<void> addItem(String? categoryId, String text,
+      {String? imageUrl, String? description}) async {
+    try {
+      await _apiService.createItem(
+          spaceId: _currentSpaceId,
+          text: text,
+          categoryId: categoryId,
+          imageUrl: imageUrl,
+          description: description);
+      await _loadSpaceDetails(_currentSpaceId);
+    } catch (e) {
+      debugPrint('Error adding item: $e');
     }
-    _saveData();
-    notifyListeners();
   }
 
-  void reorderItems(String categoryId, int oldIndex, int newIndex) {
+  Future<void> reorderItems(
+      String categoryId, int oldIndex, int newIndex) async {
     // Find the category
     final categoryIndex = categories.indexWhere((cat) => cat.id == categoryId);
     if (categoryIndex == -1) return;
@@ -371,79 +334,100 @@ class AppState extends ChangeNotifier {
     // Perform reorder
     final item = category.items.removeAt(oldIndex);
     category.items.insert(newIndex, item);
-
-    _saveData();
     notifyListeners();
+
+    try {
+      final itemIds = category.items.map((i) => i.id).toList();
+      await _apiService.reorderItems(_currentSpaceId, categoryId, itemIds);
+    } catch (e) {
+      debugPrint('Error reordering items: $e');
+      await _loadSpaceDetails(_currentSpaceId);
+    }
   }
 
-  void reorderCategories(int oldIndex, int newIndex) {
+  Future<void> reorderCategories(int oldIndex, int newIndex) async {
     if (oldIndex < newIndex) {
       newIndex -= 1;
     }
     final category = categories.removeAt(oldIndex);
     categories.insert(newIndex, category);
-    _saveData();
     notifyListeners();
+
+    try {
+      final categoryIds = categories.map((c) => c.id).toList();
+      await _apiService.reorderCategories(_currentSpaceId, categoryIds);
+    } catch (e) {
+      debugPrint('Error reordering categories: $e');
+      await _loadSpaceDetails(_currentSpaceId);
+    }
   }
 
-  void toggleCategoryVisibility(String categoryId) {
+  Future<void> toggleCategoryVisibility(String categoryId) async {
     final categoryIndex = categories.indexWhere((cat) => cat.id == categoryId);
     if (categoryIndex != -1) {
+      // Optimistic
       categories[categoryIndex].isHidden = !categories[categoryIndex].isHidden;
-      _saveData();
       notifyListeners();
-    }
-  }
 
-  void toggleItem(String itemId) {
-    for (var category in categories) {
-      final itemIndex = category.items.indexWhere((item) => item.id == itemId);
-      if (itemIndex != -1) {
-        category.items[itemIndex].isCompleted =
-            !category.items[itemIndex].isCompleted;
-        _saveData();
+      try {
+        await _apiService.toggleCategoryVisibility(
+            _currentSpaceId, categoryId, categories[categoryIndex].isHidden);
+      } catch (e) {
+        debugPrint('Error toggling category visibility: $e');
+        // Revert
+        categories[categoryIndex].isHidden =
+            !categories[categoryIndex].isHidden;
         notifyListeners();
-        return;
       }
     }
   }
 
-  void deleteItem(String itemId) {
-    for (var category in categories) {
-      category.items.removeWhere((item) => item.id == itemId);
-    }
-    _saveData();
-    notifyListeners();
-  }
+  Future<void> toggleItem(String itemId) async {
+    try {
+      // Optimistic updatish? No, let's just wait for API to ensure sync
+      // But user experience is better with optimistic.
+      // We'll update local state first then call API.
+      // ... actually, simpler to just call API and reload for now to guarantee truth.
 
-  void moveItemToCategory(String itemId, String? newCategoryId) {
-    models.ChecklistItem? itemToMove;
+      await _apiService.toggleItem(_currentSpaceId, itemId);
 
-    // Find and remove the item from its current category
-    for (var category in categories) {
-      final itemIndex = category.items.indexWhere((item) => item.id == itemId);
-      if (itemIndex != -1) {
-        itemToMove = category.items.removeAt(itemIndex);
-        break;
-      }
-    }
-
-    if (itemToMove != null) {
-      itemToMove.categoryId = newCategoryId;
-
-      if (newCategoryId != null) {
-        final newCategory =
-            categories.firstWhere((cat) => cat.id == newCategoryId);
-        newCategory.items.insert(0, itemToMove); // Insert at beginning
-      } else {
-        // Move to uncategorized
-        if (categories.isNotEmpty) {
-          categories.first.items.insert(0, itemToMove); // Insert at beginning
+      // Update local state without full reload if possible?
+      // Finding the item and toggling it locally:
+      for (var category in categories) {
+        final item = category.items.where((i) => i.id == itemId).firstOrNull;
+        if (item != null) {
+          item.isCompleted = !item.isCompleted;
+          notifyListeners();
+          break;
         }
       }
 
-      _saveData();
-      notifyListeners();
+      // We could also reload:
+      // await _loadSpaceDetails(_currentSpaceId);
+    } catch (e) {
+      debugPrint('Error toggling item: $e');
+      await _loadSpaceDetails(_currentSpaceId); // Revert on error
+    }
+  }
+
+  Future<void> deleteItem(String itemId) async {
+    try {
+      await _apiService.deleteItem(_currentSpaceId, itemId);
+      await _loadSpaceDetails(_currentSpaceId);
+    } catch (e) {
+      debugPrint('Error deleting item: $e');
+    }
+  }
+
+  Future<void> moveItemToCategory(String itemId, String? newCategoryId) async {
+    try {
+      // Optimistic or wait?
+      // Moving implies removing from one list and adding to another.
+      // Complexity of local optimistic move matches previous implementation, but syncing with API is safer.
+      await _apiService.moveItem(_currentSpaceId, itemId, newCategoryId);
+      await _loadSpaceDetails(_currentSpaceId);
+    } catch (e) {
+      debugPrint('Error moving item: $e');
     }
   }
 
@@ -483,6 +467,7 @@ class AppState extends ChangeNotifier {
       _apiService.setToken(_authToken);
 
       await _saveData();
+      await _fetchInitialData(); // Load user data from API
       notifyListeners();
       return true;
     } catch (e) {
@@ -506,6 +491,7 @@ class AppState extends ChangeNotifier {
       _apiService.setToken(_authToken);
 
       await _saveData();
+      await _fetchInitialData(); // Load user data from API
       notifyListeners();
       return true;
     } catch (e) {
@@ -525,4 +511,100 @@ class AppState extends ChangeNotifier {
 
   // Get API service instance for other operations
   ApiService get apiService => _apiService;
+
+  // API Data Fetching Methods
+  Future<void> _fetchInitialData() async {
+    try {
+      final spacesList = await _apiService.getSpaces(includeHidden: true);
+
+      if (spacesList.isEmpty) {
+        // If no spaces, create default Personal space
+        final newSpace =
+            await _apiService.createSpace(name: 'Personal', icon: '👤');
+        // Create default categories
+        final defaultCats = _getDefaultCategories();
+        for (var cat in defaultCats) {
+          await _apiService.createCategory(
+              spaceId: newSpace['id'], name: cat.name, icon: cat.icon);
+        }
+        // Fetch again
+        await _fetchInitialData();
+        return;
+      }
+
+      _spaces = spacesList
+          .map((data) => Space(
+                id: data['id'],
+                name: data['name'],
+                icon: data['icon'],
+                isHidden: data['isHidden'] ?? false,
+                categories: [],
+              ))
+          .toList();
+
+      // Determine current space
+      if (_spaces.isNotEmpty && !_spaces.any((s) => s.id == _currentSpaceId)) {
+        // Try getting from prefs first if we want persistence across restarts
+        // But for now just pick first
+        _currentSpaceId = _spaces.first.id;
+      }
+
+      if (_currentSpaceId.isNotEmpty) {
+        await _loadSpaceDetails(_currentSpaceId);
+      }
+    } catch (e) {
+      debugPrint('Error fetching initial data: $e');
+    }
+  }
+
+  Future<void> _loadSpaceDetails(String spaceId) async {
+    try {
+      // Fetch categories
+      final categoriesList =
+          await _apiService.getCategories(spaceId, includeHidden: true);
+
+      // Fetch items
+      // Fetch all items (limit 1000)
+      final allItemsData = await _apiService.getItems(spaceId, limit: 1000);
+      final itemsList = allItemsData['items'] as List;
+
+      // Map Items
+      final allItems =
+          itemsList.map((i) => models.ChecklistItem.fromJson(i)).toList();
+
+      // Map Categories
+      final newCategories = categoriesList.map((catData) {
+        final catId = catData['id'];
+        final catItems =
+            allItems.where((item) => item.categoryId == catId).toList();
+
+        return models.Category(
+          id: catId,
+          name: catData['name'],
+          icon: catData['icon'],
+          isHidden: catData['isHidden'] ?? false,
+          items: catItems,
+        );
+      }).toList();
+
+      // Handle uncategorized items: put them in the first category's list so getUncategorizedItems finds them
+      // OR better: Create a hidden "Uncategorized" bucket if we can't find a place?
+      // The current logic `getUncategorizedItems` iterates ALL categories.
+      // So we can just append them to the first category (or any) and they will be found.
+      final uncategorizedItems =
+          allItems.where((item) => item.categoryId == null).toList();
+      if (newCategories.isNotEmpty && uncategorizedItems.isNotEmpty) {
+        newCategories.first.items.addAll(uncategorizedItems);
+      }
+
+      // Update the space
+      final index = _spaces.indexWhere((s) => s.id == spaceId);
+      if (index != -1) {
+        _spaces[index].categories = newCategories;
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading space details: $e');
+    }
+  }
 }

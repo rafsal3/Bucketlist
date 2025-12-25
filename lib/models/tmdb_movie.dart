@@ -18,8 +18,8 @@ class TMDBMovie {
       id: json['id'],
       title: json['title'] ?? 'Unknown Title',
       overview: json['overview'] ?? '',
-      posterPath: json['poster_path'],
-      releaseDate: json['release_date'] ?? '',
+      posterPath: json['posterPath'] ?? json['poster_path'],
+      releaseDate: json['releaseDate'] ?? json['release_date'] ?? '',
     );
   }
 }

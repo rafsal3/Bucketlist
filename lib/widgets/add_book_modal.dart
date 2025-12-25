@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
-import '../services/open_library_service.dart';
-import '../models/open_library_book.dart';
 
 class AddBookModal extends StatefulWidget {
   final String categoryId;
@@ -18,8 +16,7 @@ class AddBookModal extends StatefulWidget {
 
 class _AddBookModalState extends State<AddBookModal> {
   final TextEditingController _searchController = TextEditingController();
-  final OpenLibraryService _service = OpenLibraryService();
-  List<OpenLibraryBook> _searchResults = [];
+  List<Map<String, dynamic>> _searchResults = [];
   bool _isLoading = false;
   String? _error;
 
@@ -33,32 +30,39 @@ class _AddBookModalState extends State<AddBookModal> {
     });
 
     try {
-      final results = await _service.searchBooks(query: query, limit: 20);
+      final appState = Provider.of<AppState>(context, listen: false);
+      final Map<String, dynamic> response =
+          await appState.apiService.searchBooks(query, limit: 20);
+      final List<dynamic> results = response['results'] ?? [];
+
       setState(() {
-        _searchResults = results;
+        _searchResults = List<Map<String, dynamic>>.from(results);
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
-        _error = e.toString().replaceAll('Exception: ', '');
+        _error = 'Failed to search books. Please try again.';
         _isLoading = false;
       });
     }
   }
 
-  void _addBook(OpenLibraryBook book) {
+  void _addBook(Map<String, dynamic> book) {
     final appState = Provider.of<AppState>(context, listen: false);
-    String title = book.title;
+    String title = book['title'] ?? 'Unknown Title';
+    final String author = book['author'] ?? '';
+    final String year = book['firstPublishYear']?.toString() ?? '';
+
     // Add author to title for clarity in the list
-    if (book.primaryAuthor.isNotEmpty) {
-      title += ' by ${book.primaryAuthor}';
+    if (author.isNotEmpty) {
+      title += ' by $author';
     }
 
     appState.addItem(
       widget.categoryId,
       title,
-      imageUrl: OpenLibraryService.getCoverUrl(book.coverId, size: 'M'),
-      description: 'Published: ${book.publishYearFormatted}',
+      imageUrl: book['coverUrl'],
+      description: 'Published: $year',
     );
     Navigator.pop(context);
 
@@ -192,9 +196,7 @@ class _AddBookModalState extends State<AddBookModal> {
                             itemCount: _searchResults.length,
                             itemBuilder: (context, index) {
                               final book = _searchResults[index];
-                              final coverUrl = OpenLibraryService.getCoverUrl(
-                                  book.coverId,
-                                  size: 'S');
+                              final coverUrl = book['coverUrl'];
 
                               return ListTile(
                                 contentPadding:
@@ -224,19 +226,20 @@ class _AddBookModalState extends State<AddBookModal> {
                                         ),
                                 ),
                                 title: Text(
-                                  book.title,
+                                  book['title'] ?? 'Unknown',
                                   style: TextStyle(fontWeight: FontWeight.w600),
                                 ),
                                 subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    if (book.primaryAuthor.isNotEmpty)
+                                    if (book['author'] != null)
                                       Text(
-                                        book.primaryAuthor,
+                                        book['author'],
                                         style: TextStyle(fontSize: 12),
                                       ),
                                     Text(
-                                      book.publishYearFormatted,
+                                      book['firstPublishYear']?.toString() ??
+                                          '',
                                       style: TextStyle(
                                           fontSize: 12,
                                           color: Theme.of(context)
