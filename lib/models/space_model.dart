@@ -7,13 +7,32 @@ class Space {
   bool isHidden;
   List<Category> categories;
 
+  // Collaboration fields
+  String? ownerId; // Person ID of the space owner
+  List<String> collaboratorIds; // List of person IDs who can access this space
+
   Space({
     required this.id,
     required this.name,
     this.icon,
     this.isHidden = false,
     List<Category>? categories,
-  }) : categories = categories ?? [];
+    this.ownerId,
+    List<String>? collaboratorIds,
+  })  : categories = categories ?? [],
+        collaboratorIds = collaboratorIds ?? [];
+
+  // Check if this is a shared space
+  bool get isShared => collaboratorIds.isNotEmpty;
+
+  // Get all user IDs (owner + collaborators)
+  List<String> getAllUserIds() {
+    final users = <String>[...collaboratorIds];
+    if (ownerId != null && !users.contains(ownerId)) {
+      users.insert(0, ownerId!);
+    }
+    return users;
+  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -22,6 +41,8 @@ class Space {
       'icon': icon,
       'isHidden': isHidden,
       'categories': categories.map((cat) => cat.toJson()).toList(),
+      'ownerId': ownerId,
+      'collaboratorIds': collaboratorIds,
     };
   }
 
@@ -35,6 +56,10 @@ class Space {
               ?.map((item) => Category.fromJson(item as Map<String, dynamic>))
               .toList() ??
           [],
+      ownerId: json['ownerId'] as String?,
+      collaboratorIds: json['collaboratorIds'] != null
+          ? List<String>.from(json['collaboratorIds'] as List)
+          : [],
     );
   }
 }

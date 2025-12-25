@@ -6,6 +6,10 @@ class ChecklistItem {
   String? imageUrl;
   String? description;
 
+  // For shared spaces: tracks completion per user
+  // Key: userId, Value: isCompleted
+  Map<String, bool> userCompletions;
+
   ChecklistItem({
     required this.id,
     required this.text,
@@ -13,7 +17,27 @@ class ChecklistItem {
     this.categoryId,
     this.imageUrl,
     this.description,
-  });
+    Map<String, bool>? userCompletions,
+  }) : userCompletions = userCompletions ?? {};
+
+  // Check if all users in a shared space have completed
+  bool isCompletedByAll(List<String> userIds) {
+    if (userIds.isEmpty) return isCompleted;
+    return userIds.every((userId) => userCompletions[userId] == true);
+  }
+
+  // Get list of users who completed this item
+  List<String> getCompletedUsers() {
+    return userCompletions.entries
+        .where((entry) => entry.value)
+        .map((entry) => entry.key)
+        .toList();
+  }
+
+  // Check if a specific user completed this item
+  bool isCompletedByUser(String userId) {
+    return userCompletions[userId] == true;
+  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -23,6 +47,7 @@ class ChecklistItem {
       'categoryId': categoryId,
       'imageUrl': imageUrl,
       'description': description,
+      'userCompletions': userCompletions,
     };
   }
 
@@ -34,6 +59,9 @@ class ChecklistItem {
       categoryId: json['categoryId'] as String?,
       imageUrl: json['imageUrl'] as String?,
       description: json['description'] as String?,
+      userCompletions: json['userCompletions'] != null
+          ? Map<String, bool>.from(json['userCompletions'] as Map)
+          : {},
     );
   }
 }

@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/category_model.dart' as models;
 import '../models/space_model.dart';
+import '../models/person_model.dart';
+import '../models/notification_model.dart';
 
 class AppState extends ChangeNotifier {
   List<Space> _spaces = [];
@@ -10,6 +13,11 @@ class AppState extends ChangeNotifier {
   bool _isLoading = true;
   bool _isDarkMode = false;
   String _themeColor = 'blue'; // Default theme color
+
+  // Collaboration features
+  List<Person> _people = [];
+  List<AppNotification> _notifications = [];
+  final String currentUserId = 'user_001'; // Dummy current user ID
 
   // Getters for the current space
   Space get currentSpace => _spaces.firstWhere(
@@ -25,6 +33,12 @@ class AppState extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isDarkMode => _isDarkMode;
   String get themeColor => _themeColor;
+
+  // Collaboration getters
+  List<Person> get people => _people;
+  List<AppNotification> get notifications => _notifications;
+  int get unreadNotificationCount =>
+      _notifications.where((n) => !n.isRead).length;
 
   int get totalCompleted =>
       categories.fold<int>(0, (sum, cat) => sum + cat.completedCount);
@@ -369,8 +383,22 @@ class AppState extends ChangeNotifier {
     for (var category in categories) {
       final itemIndex = category.items.indexWhere((item) => item.id == itemId);
       if (itemIndex != -1) {
-        category.items[itemIndex].isCompleted =
-            !category.items[itemIndex].isCompleted;
+        final item = category.items[itemIndex];
+
+        // If this is a shared space, track per-user completion
+        if (currentSpace.isShared) {
+          final isCurrentlyCompleted =
+              item.userCompletions[currentUserId] ?? false;
+          item.userCompletions[currentUserId] = !isCurrentlyCompleted;
+
+          // Update overall completion if all users completed
+          final allUserIds = currentSpace.getAllUserIds();
+          item.isCompleted = item.isCompletedByAll(allUserIds);
+        } else {
+          // Regular toggle for non-shared spaces
+          item.isCompleted = !item.isCompleted;
+        }
+
         _saveData();
         notifyListeners();
         return;
@@ -437,5 +465,193 @@ class AppState extends ChangeNotifier {
           .addAll(category.items.where((item) => item.categoryId == null));
     }
     return uncategorized;
+  }
+
+  // ===== COLLABORATION FEATURES =====
+
+  // People Management
+  void addPerson(Person person) {
+    _people.add(person);
+    _saveData();
+    notifyListeners();
+  }
+
+  void removePerson(String personId) {
+    _people.removeWhere((p) => p.id == personId);
+
+    // Remove from all shared spaces
+    for (var space in _spaces) {
+      space.collaboratorIds.removeWhere((id) => id == personId);
+    }
+
+    _saveData();
+    notifyListeners();
+  }
+
+  Person? getPersonById(String personId) {
+    try {
+      return _people.firstWhere((p) => p.id == personId);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Connect via unique code (dummy implementation)
+  void connectViaCode(String code) {
+    // Simulate finding a person by code
+    final dummyPerson = _generateDummyPerson(code);
+    addPerson(dummyPerson);
+  }
+
+  // Notification Management
+  void addNotification(AppNotification notification) {
+    _notifications.insert(0, notification);
+    _saveData();
+    notifyListeners();
+  }
+
+  void markNotificationAsRead(String notificationId) {
+    final index = _notifications.indexWhere((n) => n.id == notificationId);
+    if (index != -1) {
+      _notifications[index].isRead = true;
+      _saveData();
+      notifyListeners();
+    }
+  }
+
+  void deleteNotification(String notificationId) {
+    _notifications.removeWhere((n) => n.id == notificationId);
+    _saveData();
+    notifyListeners();
+  }
+
+  void acceptSpaceInvite(String notificationId, String spaceId) {
+    // In a real app, this would join the space
+    // For now, just remove the notification
+    deleteNotification(notificationId);
+  }
+
+  void declineSpaceInvite(String notificationId) {
+    deleteNotification(notificationId);
+  }
+
+  // Space Collaboration
+  void addCollaboratorsToSpace(String spaceId, List<String> personIds) {
+    final spaceIndex = _spaces.indexWhere((s) => s.id == spaceId);
+    if (spaceIndex != -1) {
+      for (var personId in personIds) {
+        if (!_spaces[spaceIndex].collaboratorIds.contains(personId)) {
+          _spaces[spaceIndex].collaboratorIds.add(personId);
+        }
+      }
+      _spaces[spaceIndex].ownerId = currentUserId;
+      _saveData();
+      notifyListeners();
+
+      // Send dummy invites
+      for (var personId in personIds) {
+        final person = getPersonById(personId);
+        if (person != null) {
+          _sendSpaceInvite(_spaces[spaceIndex], person);
+        }
+      }
+    }
+  }
+
+  void _sendSpaceInvite(Space space, Person person) {
+    // This is a dummy - in real app this would send to the other user
+    // For demo, we just add to our own notifications
+    final notification = AppNotification(
+      id: 'notif_${DateTime.now().millisecondsSinceEpoch}',
+      type: NotificationType.spaceInvite,
+      title: 'Space Invite',
+      message: '${person.name} invited you to "${space.name}"',
+      personId: person.id,
+      personName: person.name,
+      spaceId: space.id,
+      spaceName: space.name,
+    );
+    addNotification(notification);
+  }
+
+  // Dummy data generators for testing
+  Person _generateDummyPerson(String code) {
+    final names = ['Alice', 'Bob', 'Charlie', 'Diana', 'Eve', 'Frank'];
+    final colors = [
+      '#FF6B6B',
+      '#4ECDC4',
+      '#45B7D1',
+      '#FFA07A',
+      '#98D8C8',
+      '#F7DC6F'
+    ];
+    final random = Random();
+
+    return Person(
+      id: 'person_${DateTime.now().millisecondsSinceEpoch}',
+      name: names[random.nextInt(names.length)],
+      uniqueCode: code.toUpperCase(),
+      avatarColor: colors[random.nextInt(colors.length)],
+    );
+  }
+
+  void generateDummyPeople() {
+    if (_people.isNotEmpty) return; // Don't generate if already have people
+
+    final dummyPeople = [
+      Person(
+        id: 'person_001',
+        name: 'Sarah Johnson',
+        uniqueCode: 'ABC123',
+        avatarColor: '#FF6B6B',
+      ),
+      Person(
+        id: 'person_002',
+        name: 'Mike Chen',
+        uniqueCode: 'XYZ789',
+        avatarColor: '#4ECDC4',
+      ),
+      Person(
+        id: 'person_003',
+        name: 'Emma Davis',
+        uniqueCode: 'DEF456',
+        avatarColor: '#45B7D1',
+      ),
+    ];
+
+    _people.addAll(dummyPeople);
+    notifyListeners();
+  }
+
+  void generateDummyNotifications() {
+    if (_notifications.isNotEmpty) return;
+
+    final dummyNotifications = [
+      AppNotification(
+        id: 'notif_001',
+        type: NotificationType.spaceInvite,
+        title: 'Space Invite',
+        message: 'Sarah Johnson invited you to "Family Goals"',
+        personId: 'person_001',
+        personName: 'Sarah Johnson',
+        spaceId: 'space_dummy_001',
+        spaceName: 'Family Goals',
+        timestamp: DateTime.now().subtract(Duration(hours: 2)),
+      ),
+      AppNotification(
+        id: 'notif_002',
+        type: NotificationType.spaceInvite,
+        title: 'Space Invite',
+        message: 'Mike Chen invited you to "Travel Bucket List"',
+        personId: 'person_002',
+        personName: 'Mike Chen',
+        spaceId: 'space_dummy_002',
+        spaceName: 'Travel Bucket List',
+        timestamp: DateTime.now().subtract(Duration(days: 1)),
+      ),
+    ];
+
+    _notifications.addAll(dummyNotifications);
+    notifyListeners();
   }
 }

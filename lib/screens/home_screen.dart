@@ -14,6 +14,8 @@ import '../widgets/progress_ring.dart';
 
 import 'manage_categories_screen.dart';
 import 'customization_screen.dart';
+import 'manage_people_screen.dart';
+import 'notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -192,6 +194,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => ManageCategoriesScreen(),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                title: Text('People'),
+                leading: Icon(Icons.people_rounded),
+                trailing: Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(context); // Close the modal
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ManagePeopleScreen(),
                     ),
                   );
                 },
@@ -665,6 +681,62 @@ class _HomeScreenState extends State<HomeScreen> {
                                   size: 70,
                                 ),
                                 SizedBox(width: 8),
+                                // Notification Button
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).cardColor,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Theme.of(context).dividerColor,
+                                    ),
+                                  ),
+                                  child: Stack(
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.notifications_rounded,
+                                          color:
+                                              Theme.of(context).iconTheme.color,
+                                        ),
+                                        tooltip: 'Notifications',
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  NotificationsScreen(),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      if (appState.unreadNotificationCount > 0)
+                                        Positioned(
+                                          right: 8,
+                                          top: 8,
+                                          child: Container(
+                                            padding: EdgeInsets.all(4),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            constraints: BoxConstraints(
+                                              minWidth: 16,
+                                              minHeight: 16,
+                                            ),
+                                            child: Text(
+                                              '${appState.unreadNotificationCount}',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
                                 SizedBox(width: 8),
                                 // Settings Button
                                 Container(

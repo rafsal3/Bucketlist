@@ -16,7 +16,15 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (context) => AppState(),
+      create: (context) {
+        final appState = AppState();
+        // Initialize dummy data for testing collaboration features
+        Future.delayed(Duration(milliseconds: 500), () {
+          appState.generateDummyPeople();
+          appState.generateDummyNotifications();
+        });
+        return appState;
+      },
       child: Consumer<AppState>(
         builder: (context, appState, child) {
           return MaterialApp(

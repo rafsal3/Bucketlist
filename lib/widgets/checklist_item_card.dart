@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/category_model.dart';
+import '../models/person_model.dart';
 import '../providers/app_state.dart';
+import 'completion_avatars.dart';
 
 class ChecklistItemCard extends StatelessWidget {
   final ChecklistItem item;
@@ -118,14 +121,20 @@ class ChecklistItemCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
-                    item.isCompleted
+                    (appState.currentSpace.isShared
+                            ? item.isCompletedByUser(appState.currentUserId)
+                            : item.isCompleted)
                         ? Icons.check_circle_outline
                         : Icons.radio_button_unchecked,
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
                 title: Text(
-                  item.isCompleted ? 'Mark as Undone' : 'Mark as Done',
+                  (appState.currentSpace.isShared
+                          ? item.isCompletedByUser(appState.currentUserId)
+                          : item.isCompleted)
+                      ? 'Mark as Undone'
+                      : 'Mark as Done',
                   style: TextStyle(fontWeight: FontWeight.w600),
                 ),
                 onTap: () {
@@ -276,6 +285,11 @@ class ChecklistItemCard extends StatelessWidget {
       }
     }
 
+    // Determine if the item is completed for the current user
+    final bool isCompletedForCurrentUser = appState.currentSpace.isShared
+        ? item.isCompletedByUser(appState.currentUserId)
+        : item.isCompleted;
+
     Widget cardContent = Container(
       margin: EdgeInsets.only(bottom: 12),
       padding: EdgeInsets.all(16),
@@ -301,16 +315,16 @@ class ChecklistItemCard extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: item.isCompleted
+                  color: isCompletedForCurrentUser
                       ? Theme.of(context).colorScheme.primary
                       : Theme.of(context).disabledColor,
                   width: 2,
                 ),
-                color: item.isCompleted
+                color: isCompletedForCurrentUser
                     ? Theme.of(context).colorScheme.primary
                     : Colors.transparent,
               ),
-              child: item.isCompleted
+              child: isCompletedForCurrentUser
                   ? Icon(
                       Icons.check,
                       size: 16,
@@ -347,10 +361,10 @@ class ChecklistItemCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: item.isCompleted
+                    color: isCompletedForCurrentUser
                         ? Theme.of(context).disabledColor
                         : Theme.of(context).textTheme.bodyLarge?.color,
-                    decoration: item.isCompleted
+                    decoration: isCompletedForCurrentUser
                         ? TextDecoration.lineThrough
                         : TextDecoration.none,
                   ),
@@ -372,6 +386,36 @@ class ChecklistItemCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                // Show completion avatars for shared spaces
+                if (appState.currentSpace.isShared) ...[
+                  SizedBox(height: 8),
+                  Consumer<AppState>(
+                    builder: (context, state, child) {
+                      final allUsers = appState.currentSpace.getAllUserIds();
+                      final completedUserIds = item.getCompletedUsers();
+
+                      // Get person objects for completed users
+                      final completedPeople = completedUserIds
+                          .map((id) => state.getPersonById(id))
+                          .whereType<Person>()
+                          .toList();
+
+                      // Get all people objects
+                      final allPeople = allUsers
+                          .map((id) => state.getPersonById(id))
+                          .whereType<Person>()
+                          .toList();
+
+                      if (allPeople.isEmpty) return SizedBox.shrink();
+
+                      return CompletionAvatars(
+                        completedUsers: completedPeople,
+                        allUsers: allPeople,
+                        size: 20,
+                      );
+                    },
+                  ),
+                ],
               ],
             ),
           ),
