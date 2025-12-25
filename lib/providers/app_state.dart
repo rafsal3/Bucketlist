@@ -11,6 +11,10 @@ class AppState extends ChangeNotifier {
   bool _isDarkMode = false;
   String _themeColor = 'blue'; // Default theme color
 
+  // Authentication state
+  bool _isAuthenticated = false;
+  String _currentUser = '';
+
   // Getters for the current space
   Space get currentSpace => _spaces.firstWhere(
         (s) => s.id == _currentSpaceId,
@@ -25,6 +29,10 @@ class AppState extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isDarkMode => _isDarkMode;
   String get themeColor => _themeColor;
+
+  // Authentication getters
+  bool get isAuthenticated => _isAuthenticated;
+  String get currentUser => _currentUser;
 
   int get totalCompleted =>
       categories.fold<int>(0, (sum, cat) => sum + cat.completedCount);
@@ -42,6 +50,10 @@ class AppState extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       _isDarkMode = prefs.getBool('isDarkMode') ?? false;
       _themeColor = prefs.getString('themeColor') ?? 'blue';
+
+      // Load authentication state
+      _isAuthenticated = prefs.getBool('isAuthenticated') ?? false;
+      _currentUser = prefs.getString('currentUser') ?? '';
 
       final String? spacesJson = prefs.getString('spaces');
 
@@ -114,6 +126,10 @@ class AppState extends ChangeNotifier {
 
       // Save current space selection
       await prefs.setString('currentSpaceId', _currentSpaceId);
+
+      // Save authentication state
+      await prefs.setBool('isAuthenticated', _isAuthenticated);
+      await prefs.setString('currentUser', _currentUser);
     } catch (e) {
       debugPrint('Error saving data: $e');
     }
@@ -437,5 +453,44 @@ class AppState extends ChangeNotifier {
           .addAll(category.items.where((item) => item.categoryId == null));
     }
     return uncategorized;
+  }
+
+  // Authentication methods
+  Future<bool> login(String username, String password) async {
+    // Hardcoded credentials for demo
+    final validCredentials = {
+      'demo@bucketlist.com': 'password123',
+      'demo': 'password123',
+    };
+
+    if (validCredentials.containsKey(username) &&
+        validCredentials[username] == password) {
+      _isAuthenticated = true;
+      _currentUser = username;
+      await _saveData();
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  Future<bool> register(String username, String password) async {
+    // For demo purposes, just accept any registration
+    // In a real app, you'd save to a backend or local database
+    if (username.isNotEmpty && password.length >= 6) {
+      _isAuthenticated = true;
+      _currentUser = username;
+      await _saveData();
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> logout() async {
+    _isAuthenticated = false;
+    _currentUser = '';
+    await _saveData();
+    notifyListeners();
   }
 }

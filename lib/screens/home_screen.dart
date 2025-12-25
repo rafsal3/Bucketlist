@@ -131,87 +131,226 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                margin: EdgeInsets.symmetric(vertical: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).dividerColor,
-                  borderRadius: BorderRadius.circular(2),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  margin: EdgeInsets.symmetric(vertical: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).dividerColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: Text(
-                  'Settings',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Text(
+                    'Settings',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                ),
+                Consumer<AppState>(
+                  builder: (context, appState, child) {
+                    return SwitchListTile(
+                      title: Text('Dark Mode'),
+                      secondary: Icon(
+                        appState.isDarkMode
+                            ? Icons.dark_mode_rounded
+                            : Icons.light_mode_rounded,
                       ),
+                      value: appState.isDarkMode,
+                      onChanged: (value) {
+                        appState.toggleTheme();
+                      },
+                    );
+                  },
                 ),
-              ),
-              Consumer<AppState>(
-                builder: (context, appState, child) {
-                  return SwitchListTile(
-                    title: Text('Dark Mode'),
-                    secondary: Icon(
-                      appState.isDarkMode
-                          ? Icons.dark_mode_rounded
-                          : Icons.light_mode_rounded,
+                ListTile(
+                  title: Text('Customization'),
+                  leading: Icon(Icons.palette_rounded),
+                  trailing: Icon(Icons.chevron_right_rounded),
+                  onTap: () {
+                    Navigator.pop(context); // Close the modal
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CustomizationScreen(),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  title: Text('Manage Categories'),
+                  leading: Icon(Icons.category_rounded),
+                  trailing: Icon(Icons.chevron_right_rounded),
+                  onTap: () {
+                    Navigator.pop(context); // Close the modal
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ManageCategoriesScreen(),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  title: Text('Manage Spaces'),
+                  leading: Icon(Icons.space_dashboard_rounded),
+                  trailing: Icon(Icons.chevron_right_rounded),
+                  onTap: () {
+                    Navigator.pop(context); // Close the modal
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ManageSpacesScreen(),
+                      ),
+                    );
+                  },
+                ),
+                Divider(height: 32),
+                // User Info
+                Consumer<AppState>(
+                  builder: (context, appState, child) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Container(
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Theme.of(context).dividerColor,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withOpacity(0.8),
+                                    Theme.of(context).colorScheme.primary,
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.person_rounded,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Logged in as',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.color,
+                                        ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    appState.currentUser,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                SizedBox(height: 16),
+                // Logout Button
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Consumer<AppState>(
+                      builder: (context, appState, child) {
+                        return OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context); // Close the modal first
+                            // Show confirmation dialog
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: Text('Logout'),
+                                content:
+                                    Text('Are you sure you want to logout?'),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                    },
+                                    child: Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      Navigator.pop(context); // Close dialog
+                                      await appState.logout();
+                                    },
+                                    child: Text(
+                                      'Logout',
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          icon: Icon(Icons.logout_rounded, color: Colors.red),
+                          label: Text(
+                            'Logout',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            side: BorderSide(color: Colors.red),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                    value: appState.isDarkMode,
-                    onChanged: (value) {
-                      appState.toggleTheme();
-                    },
-                  );
-                },
-              ),
-              ListTile(
-                title: Text('Customization'),
-                leading: Icon(Icons.palette_rounded),
-                trailing: Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  Navigator.pop(context); // Close the modal
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CustomizationScreen(),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                title: Text('Manage Categories'),
-                leading: Icon(Icons.category_rounded),
-                trailing: Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  Navigator.pop(context); // Close the modal
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ManageCategoriesScreen(),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                title: Text('Manage Spaces'),
-                leading: Icon(Icons.space_dashboard_rounded),
-                trailing: Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  Navigator.pop(context); // Close the modal
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ManageSpacesScreen(),
-                    ),
-                  );
-                },
-              ),
-              SizedBox(height: 16),
-            ],
+                  ),
+                ),
+                SizedBox(height: 16),
+              ],
+            ),
           ),
         ),
       ),

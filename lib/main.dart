@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
+import 'screens/login_screen.dart';
 // import 'widgets/book_search_example.dart'; // Import the example widget
 import 'theme/app_theme.dart';
 import 'package:provider/provider.dart';
@@ -24,10 +25,19 @@ class MyApp extends StatelessWidget {
             theme: appState.isDarkMode
                 ? AppTheme.darkTheme(appState.themeColor)
                 : AppTheme.lightTheme(appState.themeColor),
-            // Temporarily show the book search example for testing
-            // Change back to HomeScreen() when done testing
-            // home: const BookSearchExample(), // Testing books integration
-            home: const HomeScreen(), // Original home screen
+            // Route based on authentication state
+            home: appState.isLoading
+                ? Scaffold(
+                    backgroundColor: appState.isDarkMode
+                        ? const Color(0xFF121212)
+                        : Colors.white,
+                    body: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                : appState.isAuthenticated
+                    ? const HomeScreen()
+                    : const LoginScreen(),
             debugShowCheckedModeBanner: false,
           );
         },
