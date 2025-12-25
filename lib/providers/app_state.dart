@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/category_model.dart' as models;
 import '../models/space_model.dart';
+import '../services/api_service.dart';
 
 class AppState extends ChangeNotifier {
   List<Space> _spaces = [];
@@ -14,6 +15,10 @@ class AppState extends ChangeNotifier {
   // Authentication state
   bool _isAuthenticated = false;
   String _currentUser = '';
+  String? _authToken;
+
+  // API Service
+  final ApiService _apiService = ApiService();
 
   // Getters for the current space
   Space get currentSpace => _spaces.firstWhere(
@@ -54,6 +59,12 @@ class AppState extends ChangeNotifier {
       // Load authentication state
       _isAuthenticated = prefs.getBool('isAuthenticated') ?? false;
       _currentUser = prefs.getString('currentUser') ?? '';
+      _authToken = prefs.getString('authToken');
+
+      // Set token in API service
+      if (_authToken != null) {
+        _apiService.setToken(_authToken);
+      }
 
       final String? spacesJson = prefs.getString('spaces');
 
@@ -130,6 +141,9 @@ class AppState extends ChangeNotifier {
       // Save authentication state
       await prefs.setBool('isAuthenticated', _isAuthenticated);
       await prefs.setString('currentUser', _currentUser);
+      if (_authToken != null) {
+        await prefs.setString('authToken', _authToken!);
+      }
     } catch (e) {
       debugPrint('Error saving data: $e');
     }
@@ -457,40 +471,58 @@ class AppState extends ChangeNotifier {
 
   // Authentication methods
   Future<bool> login(String username, String password) async {
-    // Hardcoded credentials for demo
-    final validCredentials = {
-      'demo@bucketlist.com': 'password123',
-      'demo': 'password123',
-    };
+    try {
+      final response = await _apiService.login(
+        email: username,
+        password: password,
+      );
 
-    if (validCredentials.containsKey(username) &&
-        validCredentials[username] == password) {
       _isAuthenticated = true;
-      _currentUser = username;
+      _currentUser = response.email;
+      _authToken = response.token;
+      _apiService.setToken(_authToken);
+
       await _saveData();
       notifyListeners();
       return true;
+    } catch (e) {
+      debugPrint('Login error: $e');
+      return false;
     }
-    return false;
   }
 
-  Future<bool> register(String username, String password) async {
-    // For demo purposes, just accept any registration
-    // In a real app, you'd save to a backend or local database
-    if (username.isNotEmpty && password.length >= 6) {
+  Future<bool> register(String username, String password,
+      {String? name}) async {
+    try {
+      final response = await _apiService.register(
+        email: username,
+        password: password,
+        name: name ?? username.split('@').first,
+      );
+
       _isAuthenticated = true;
-      _currentUser = username;
+      _currentUser = response.email;
+      _authToken = response.token;
+      _apiService.setToken(_authToken);
+
       await _saveData();
       notifyListeners();
       return true;
+    } catch (e) {
+      debugPrint('Registration error: $e');
+      return false;
     }
-    return false;
   }
 
   Future<void> logout() async {
     _isAuthenticated = false;
     _currentUser = '';
+    _authToken = null;
+    _apiService.setToken(null);
     await _saveData();
     notifyListeners();
   }
+
+  // Get API service instance for other operations
+  ApiService get apiService => _apiService;
 }

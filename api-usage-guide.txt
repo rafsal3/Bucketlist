@@ -1,0 +1,290 @@
+API Documentation Files - Usage Guide
+📁 Files Created
+api-endpoints.json
+ - Complete API reference with examples
+postman-collection.json
+ - Ready-to-import Postman collection
+🔧 Using with Postman
+Import Collection
+Open Postman
+Click Import button (top left)
+Select 
+postman-collection.json
+Click Import
+Set Up Environment
+The collection uses variables:
+
+baseUrl - Already set to http://localhost:5000/api/v1
+authToken - Auto-populated after login
+Test Workflow
+Register → Creates account
+Login → Auto-saves token to {{authToken}}
+All other endpoints → Use saved token automatically
+📱 Using with Flutter
+1. Create API Service Class
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+class ApiService {
+  // For localhost
+  static const String baseUrl = 'http://localhost:5000/api/v1';
+  
+  // For Android Emulator
+  // static const String baseUrl = 'http://10.0.2.2:5000/api/v1';
+  
+  // For physical device (use your computer's IP)
+  // static const String baseUrl = 'http://192.168.x.x:5000/api/v1';
+  
+  String? _authToken;
+  
+  // Set token after login
+  void setToken(String token) {
+    _authToken = token;
+  }
+  
+  // Get headers
+  Map<String, String> _getHeaders({bool needsAuth = true}) {
+    final headers = {'Content-Type': 'application/json'};
+    if (needsAuth && _authToken != null) {
+      headers['Authorization'] = 'Bearer $_authToken';
+    }
+    return headers;
+  }
+  
+  // Register
+  Future<Map<String, dynamic>> register(String email, String password, String name) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/register'),
+      headers: _getHeaders(needsAuth: false),
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+        'name': name,
+      }),
+    );
+    
+    final data = jsonDecode(response.body);
+    if (data['success'] && data['data']['token'] != null) {
+      setToken(data['data']['token']);
+    }
+    return data;
+  }
+  
+  // Login
+  Future<Map<String, dynamic>> login(String email, String password) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/login'),
+      headers: _getHeaders(needsAuth: false),
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+      }),
+    );
+    
+    final data = jsonDecode(response.body);
+    if (data['success'] && data['data']['token'] != null) {
+      setToken(data['data']['token']);
+    }
+    return data;
+  }
+  
+  // Get all spaces
+  Future<Map<String, dynamic>> getSpaces() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/spaces'),
+      headers: _getHeaders(),
+    );
+    return jsonDecode(response.body);
+  }
+  
+  // Create space
+  Future<Map<String, dynamic>> createSpace(String name, String icon) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/spaces'),
+      headers: _getHeaders(),
+      body: jsonEncode({
+        'name': name,
+        'icon': icon,
+      }),
+    );
+    return jsonDecode(response.body);
+  }
+  
+  // Get categories
+  Future<Map<String, dynamic>> getCategories(String spaceId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/spaces/$spaceId/categories'),
+      headers: _getHeaders(),
+    );
+    return jsonDecode(response.body);
+  }
+  
+  // Create item
+  Future<Map<String, dynamic>> createItem({
+    required String spaceId,
+    required String text,
+    String? categoryId,
+    String? imageUrl,
+    String? description,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/spaces/$spaceId/items'),
+      headers: _getHeaders(),
+      body: jsonEncode({
+        'text': text,
+        'categoryId': categoryId,
+        'imageUrl': imageUrl,
+        'description': description,
+      }),
+    );
+    return jsonDecode(response.body);
+  }
+  
+  // Toggle item completion
+  Future<Map<String, dynamic>> toggleItem(String spaceId, String itemId) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/spaces/$spaceId/items/$itemId/toggle'),
+      headers: _getHeaders(),
+    );
+    return jsonDecode(response.body);
+  }
+  
+  // Search movies
+  Future<Map<String, dynamic>> searchMovies(String query) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/external/movies/search?query=$query'),
+      headers: _getHeaders(),
+    );
+    return jsonDecode(response.body);
+  }
+  
+  // Get stats
+  Future<Map<String, dynamic>> getStats({String? spaceId}) async {
+    final url = spaceId != null 
+        ? '$baseUrl/stats?spaceId=$spaceId'
+        : '$baseUrl/stats';
+    final response = await http.get(
+      Uri.parse(url),
+      headers: _getHeaders(),
+    );
+    return jsonDecode(response.body);
+  }
+}
+2. Usage Example
+final apiService = ApiService();
+// Register
+try {
+  final result = await apiService.register(
+    'user@example.com',
+    'password123',
+    'John Doe',
+  );
+  
+  if (result['success']) {
+    print('Registered! Token: ${result['data']['token']}');
+  }
+} catch (e) {
+  print('Error: $e');
+}
+// Get spaces
+final spaces = await apiService.getSpaces();
+if (spaces['success']) {
+  for (var space in spaces['data']) {
+    print('Space: ${space['name']}');
+  }
+}
+// Create item
+final item = await apiService.createItem(
+  spaceId: 'space_123',
+  text: 'Visit Tokyo',
+  categoryId: 'default_places',
+  imageUrl: 'https://example.com/tokyo.jpg',
+);
+📖 API Reference Quick Guide
+All Endpoints
+Refer to 
+api-endpoints.json
+ for complete details. Here's the structure:
+
+{
+  "endpoints": {
+    "authentication": { ... },
+    "spaces": { ... },
+    "categories": { ... },
+    "items": { ... },
+    "external": { ... },
+    "sync": { ... },
+    "stats": { ... }
+  }
+}
+Common Patterns
+GET Request:
+
+GET /api/v1/spaces
+Headers: Authorization: Bearer <token>
+POST Request:
+
+POST /api/v1/spaces
+Headers: 
+  Content-Type: application/json
+  Authorization: Bearer <token>
+Body: { "name": "My Space", "icon": "🎯" }
+PATCH Request:
+
+PATCH /api/v1/spaces/:spaceId/items/:itemId/toggle
+Headers: Authorization: Bearer <token>
+🔑 Authentication Flow
+Register or Login → Get token
+Save token in your app (SharedPreferences, SecureStorage, etc.)
+Include token in all subsequent requests:
+Authorization: Bearer <token>
+🌐 Network Configuration
+Localhost (Development)
+http://localhost:5000/api/v1
+Android Emulator
+http://10.0.2.2:5000/api/v1
+iOS Simulator
+http://localhost:5000/api/v1
+Physical Device
+Find your computer's IP:
+
+# Windows
+ipconfig
+# Mac/Linux
+ifconfig
+Use: http://YOUR_IP:5000/api/v1
+
+📝 Response Format
+Success Response
+{
+  "success": true,
+  "data": { ... }
+}
+Error Response
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Error description"
+  }
+}
+🎯 Quick Test Commands
+Using cURL
+# Register
+curl -X POST http://localhost:5000/api/v1/auth/register ^
+  -H "Content-Type: application/json" ^
+  -d "{\"email\":\"test@example.com\",\"password\":\"password123\",\"name\":\"Test User\"}"
+# Login
+curl -X POST http://localhost:5000/api/v1/auth/login ^
+  -H "Content-Type: application/json" ^
+  -d "{\"email\":\"test@example.com\",\"password\":\"password123\"}"
+# Get spaces (replace TOKEN)
+curl -X GET http://localhost:5000/api/v1/spaces ^
+  -H "Authorization: Bearer TOKEN"
+📚 Additional Resources
+Full API Spec: 
+api-endpoints.json
+Postman Collection: 
+postman-collection.json
+Server README: 
+README.md
+Setup Guide: Check artifacts folder
