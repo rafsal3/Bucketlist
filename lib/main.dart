@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'models/category_model.dart';
+import 'models/space_model.dart';
 import 'screens/home_screen.dart';
 // import 'widgets/book_search_example.dart'; // Import the example widget
 import 'theme/app_theme.dart';
@@ -7,6 +10,18 @@ import 'providers/app_state.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive
+  await Hive.initFlutter();
+
+  // Register Adapters
+  Hive.registerAdapter(ChecklistItemAdapter());
+  Hive.registerAdapter(CategoryAdapter());
+  Hive.registerAdapter(SpaceAdapter());
+
+  // Open Boxes
+  await Hive.openBox<Space>('spaces');
+
   runApp(const MyApp());
 }
 

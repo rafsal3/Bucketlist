@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../models/category_model.dart' as models;
 import '../models/space_model.dart';
 import '../models/sync_status.dart';
@@ -29,10 +30,6 @@ class AppState extends ChangeNotifier {
   Timer? _syncDebounceTimer;
   int _dataVersion = 0; // Server version number
   bool _isSyncing = false; // Prevent concurrent syncs
-
-  // Mutation queue to prevent race conditions
-  bool _isMutating = false;
-  final List<Function> _mutationQueue = [];
 
   // Getters for the current space
   Space get currentSpace => _spaces.firstWhere(
@@ -103,31 +100,36 @@ class AppState extends ChangeNotifier {
       _userEmail = prefs.getString('userEmail');
       _authToken = prefs.getString('authToken');
 
-      final String? spacesJson = prefs.getString('spaces');
+      // Load spaces from Hive
+      final box = Hive.box<Space>('spaces');
 
-      if (spacesJson != null) {
-        // Load spaces directly
-        final List<dynamic> decoded = jsonDecode(spacesJson);
-        _spaces = decoded.map((json) => Space.fromJson(json)).toList();
-        _currentSpaceId = prefs.getString('currentSpaceId') ??
-            (_spaces.isNotEmpty ? _spaces.first.id : '');
+      // MIGRATION: Check if we have legacy data in SharedPreferences
+      final String? legacySpacesJson = prefs.getString('spaces');
 
-        // Migration: Extract orphaned uncategorized items from categories
-        _migrateOrphanedItems();
+      if (box.isEmpty && legacySpacesJson != null) {
+        debugPrint(
+            '📦 Migrating legacy data from SharedPreferences to Hive...');
+        final List<dynamic> decoded = jsonDecode(legacySpacesJson);
+        final legacySpaces =
+            decoded.map((json) => Space.fromJson(json)).toList();
+
+        // Add all to Hive
+        await box.addAll(legacySpaces);
+        _spaces = box.values.toList();
+
+        // Clear legacy data
+        // await prefs.remove('spaces'); // Optional: keep as backup for now
+        debugPrint(
+            '✅ Migration complete: Moved ${legacySpaces.length} spaces to Hive');
       } else {
-        // Legacy migration or fresh install
-        final String? categoriesJson = prefs.getString('categories');
-        List<models.Category> initialCategories;
+        // Normal load from Hive
+        _spaces = box.values.toList();
+      }
 
-        if (categoriesJson != null) {
-          // Migration: Load existing categories
-          final List<dynamic> decoded = jsonDecode(categoriesJson);
-          initialCategories =
-              decoded.map((json) => models.Category.fromJson(json)).toList();
-        } else {
-          // Fresh install: Default categories
-          initialCategories = _getDefaultCategories();
-        }
+      // If still empty (fresh install), create default data
+      if (_spaces.isEmpty) {
+        // Fresh install: Default categories
+        final initialCategories = _getDefaultCategories();
 
         // Create default "Personal" space
         final personalSpace = Space(
@@ -137,14 +139,20 @@ class AppState extends ChangeNotifier {
           categories: initialCategories,
         );
 
+        // Add to Hive
+        await box.add(personalSpace);
         _spaces = [personalSpace];
         _currentSpaceId = personalSpace.id;
 
-        // Migration: Extract orphaned uncategorized items
-        _migrateOrphanedItems();
+        // Save initial state
+        _savePreferences();
+      } else {
+        // Load current space ID
+        _currentSpaceId = prefs.getString('currentSpaceId') ??
+            (_spaces.isNotEmpty ? _spaces.first.id : '');
 
-        // Save immediately to complete migration
-        _saveData();
+        // Check for orphaned items (legacy fix)
+        _migrateOrphanedItems();
       }
 
       // Safety check if currentSpaceId is invalid
@@ -169,14 +177,10 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _saveData() async {
+  /// Saves ONLY non-space settings (preferences, auth, metadata)
+  Future<void> _savePreferences() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-
-      // Save spaces
-      final String encoded =
-          jsonEncode(_spaces.map((space) => space.toJson()).toList());
-      await prefs.setString('spaces', encoded);
 
       // Save current space selection
       await prefs.setString('currentSpaceId', _currentSpaceId);
@@ -184,7 +188,43 @@ class AppState extends ChangeNotifier {
       // Save lastModifiedAt
       await prefs.setInt('lastModifiedAt', _lastModifiedAt);
     } catch (e) {
-      debugPrint('Error saving data: $e');
+      debugPrint('Error saving preferences: $e');
+    }
+  }
+
+  /// Persists spaces to Hive
+  /// Efficiently updates modified spaces and handles deletions
+  Future<void> _persistSpaces() async {
+    try {
+      final box = Hive.box<Space>('spaces');
+      final currentIds = <String>{};
+
+      // 1. Update or Add spaces
+      for (var space in _spaces) {
+        currentIds.add(space.id);
+        if (space.isInBox) {
+          await space.save();
+        } else {
+          await box.add(space);
+        }
+      }
+
+      // 2. Handle Deletions (Remove spaces from Box that are not in Memory)
+      final keysToDelete = <dynamic>[];
+      for (var key in box.keys) {
+        final space = box.get(key);
+        if (space != null && !currentIds.contains(space.id)) {
+          keysToDelete.add(key);
+        }
+      }
+
+      if (keysToDelete.isNotEmpty) {
+        debugPrint(
+            '🗑️ removing ${keysToDelete.length} deleted spaces from persistent storage');
+        await box.deleteAll(keysToDelete);
+      }
+    } catch (e) {
+      debugPrint('Error persisting spaces to Hive: $e');
     }
   }
 
@@ -216,7 +256,7 @@ class AppState extends ChangeNotifier {
     if (migrationNeeded) {
       debugPrint(
           'Migration completed: Moved orphaned items to uncategorizedItems');
-      _saveData(); // Save the migrated data
+      _persistSpaces(); // Save to Hive
     }
   }
 
@@ -613,8 +653,9 @@ class AppState extends ChangeNotifier {
       // Update lastModifiedAt to current time
       _lastModifiedAt = DateTime.now().millisecondsSinceEpoch;
 
-      // Save to local storage
-      await _saveData();
+      // Save to local storage (Hive + Prefs)
+      await _persistSpaces();
+      await _savePreferences();
 
       // Mark as synced
       setSynced();
@@ -637,50 +678,24 @@ class AppState extends ChangeNotifier {
   // UNIFIED MUTATION WRAPPER
   // ============================================================================
 
-  /// **CRITICAL**: All data mutations MUST go through this function.
-  /// This ensures:
-  /// 1. Local data is modified
-  /// 2. lastModifiedAt timestamp is updated
-  /// 3. Sync status is marked as pending (localOnly)
-  /// 4. Data is persisted to storage
-  /// 5. UI is notified
-  /// 6. Cloud sync is triggered (debounced)
-  ///
-  /// This makes cloud sync trivial later - just add sync logic here!
   Future<void> mutateData(Function action) async {
-    // Queue mutations if one is already in progress
-    if (_isMutating) {
-      debugPrint('⚠️ Mutation in progress, queuing...');
-      _mutationQueue.add(action);
-      return;
-    }
+    // 1. Execute the mutation action
+    action();
 
-    _isMutating = true;
+    // 2. Update timestamp and mark as needing sync
+    _updateLastModified();
 
-    try {
-      // 1. Execute the mutation action
-      action();
+    // 3. Persist to Hive (Fast & Safe)
+    await _persistSpaces();
 
-      // 2. Update timestamp and mark as needing sync
-      _updateLastModified();
+    // 4. Save metadata (current space, etc)
+    await _savePreferences();
 
-      // 3. Persist to local storage
-      await _saveData();
+    // 5. Notify UI listeners
+    notifyListeners();
 
-      // 4. Notify UI listeners
-      notifyListeners();
-
-      // 5. Trigger debounced cloud sync (if logged in)
-      _markSyncPending();
-    } finally {
-      _isMutating = false;
-
-      // Process queued mutations
-      if (_mutationQueue.isNotEmpty) {
-        final nextAction = _mutationQueue.removeAt(0);
-        await mutateData(nextAction);
-      }
-    }
+    // 6. Trigger debounced cloud sync (if logged in)
+    _markSyncPending();
   }
 
   Future<void> _saveTheme() async {
@@ -801,7 +816,7 @@ class AppState extends ChangeNotifier {
   void switchSpace(String spaceId) {
     if (_spaces.any((s) => s.id == spaceId)) {
       _currentSpaceId = spaceId;
-      _saveData();
+      _savePreferences();
       notifyListeners();
     }
   }

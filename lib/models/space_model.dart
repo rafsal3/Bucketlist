@@ -1,11 +1,21 @@
+import 'package:hive/hive.dart';
 import 'category_model.dart';
 
-class Space {
+part 'space_model.g.dart';
+
+@HiveType(typeId: 2)
+class Space extends HiveObject {
+  @HiveField(0)
   final String id;
+  @HiveField(1)
   String name;
+  @HiveField(2)
   String? icon;
+  @HiveField(3)
   bool isHidden;
+  @HiveField(4)
   List<Category> categories;
+  @HiveField(5)
   List<ChecklistItem>
       uncategorizedItems; // Dedicated storage for uncategorized items
 

@@ -1,9 +1,20 @@
+import 'package:hive/hive.dart';
+
+part 'category_model.g.dart';
+
+@HiveType(typeId: 0)
 class ChecklistItem {
+  @HiveField(0)
   final String id;
+  @HiveField(1)
   String text;
+  @HiveField(2)
   bool isCompleted;
+  @HiveField(3)
   String? categoryId; // null means uncategorized
+  @HiveField(4)
   String? imageUrl;
+  @HiveField(5)
   String? description;
 
   ChecklistItem({
@@ -38,11 +49,17 @@ class ChecklistItem {
   }
 }
 
+@HiveType(typeId: 1)
 class Category {
+  @HiveField(0)
   final String id;
+  @HiveField(1)
   String name;
+  @HiveField(2)
   String icon;
+  @HiveField(3)
   bool isHidden;
+  @HiveField(4)
   List<ChecklistItem> items;
 
   Category({
