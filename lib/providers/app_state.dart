@@ -290,6 +290,75 @@ class AppState extends ChangeNotifier {
     await _pullFromCloud();
   }
 
+  /// Register user with email and auth token
+  /// CRITICAL: Pushes any existing local data to server BEFORE pulling
+  /// This prevents data loss when users register after creating offline content
+  Future<void> registerWithLocalData(String email, String token) async {
+    _isLoggedIn = true;
+    _userEmail = email;
+    _authToken = token;
+
+    // Persist authentication state
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true);
+    await prefs.setString('userEmail', email);
+    await prefs.setString('authToken', token);
+
+    notifyListeners();
+
+    // Check if there's any local data to push
+    final hasLocalData = _spaces.isNotEmpty;
+
+    if (hasLocalData) {
+      debugPrint(
+          '📤 Registration: Found local data, pushing to server first...');
+
+      try {
+        // Push local data with version 0 (first-time sync)
+        final data = {
+          'spaces': _spaces.map((space) => space.toJson()).toList(),
+          'currentSpaceId': _currentSpaceId,
+          'themeColor': _themeColor,
+          'isDarkMode': _isDarkMode,
+        };
+
+        setSyncing();
+
+        final response = await _syncApi.pushToCloud(
+          authToken: token,
+          version: 0, // CRITICAL: version 0 for first-time push
+          lastModifiedAt: _lastModifiedAt,
+          data: data,
+        );
+
+        // Update version from server
+        if (response.containsKey('version')) {
+          _dataVersion = response['version'] as int;
+        }
+
+        // Mark as synced - we just pushed successfully!
+        setSynced();
+
+        debugPrint(
+            '✅ Local data pushed successfully! Server version: $_dataVersion');
+        debugPrint('✅ Registration complete - local data preserved!');
+
+        // DON'T pull from cloud - we already have the data locally!
+        // Pulling would clear local data first, which could cause data loss
+        return; // Exit early
+      } catch (e) {
+        debugPrint('❌ Failed to push local data during registration: $e');
+        // Don't throw - we'll try to sync later
+        setSyncError('Failed to sync local data: $e');
+        return; // Exit early, keep local data
+      }
+    } else {
+      // No local data - pull from server to get any existing data
+      debugPrint('📥 Registration: No local data, pulling from server...');
+      await _pullFromCloud();
+    }
+  }
+
   /// Logout user and clear authentication data
   Future<void> logout() async {
     _isLoggedIn = false;

@@ -46,27 +46,37 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
       Map<String, dynamic> response;
 
       if (_isLogin) {
-        // Login
+        // Login - normal flow (pull from cloud)
         response = await _syncApi.login(email, password);
+
+        // Extract token from response
+        final token = response['token'] as String?;
+        if (token == null) {
+          throw Exception('No token received from server');
+        }
+
+        // Login will pull from cloud
+        await appState.login(email, token);
       } else {
-        // Register
+        // Registration - special flow (push local data first, then pull)
         response = await _syncApi.register(email, password);
-      }
 
-      // Extract token from response
-      final token = response['token'] as String?;
-      if (token == null) {
-        throw Exception('No token received from server');
-      }
+        // Extract token from response
+        final token = response['token'] as String?;
+        if (token == null) {
+          throw Exception('No token received from server');
+        }
 
-      // Save auth state
-      await appState.login(email, token);
+        // Register with local data - this will push before pulling
+        await appState.registerWithLocalData(email, token);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-                _isLogin ? 'Login successful!' : 'Registration successful!'),
+            content: Text(_isLogin
+                ? 'Login successful!'
+                : 'Registration successful! Syncing your data...'),
             backgroundColor: Colors.green,
           ),
         );
