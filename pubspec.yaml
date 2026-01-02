@@ -101,5 +101,5 @@ flutter:
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/images/bucket-icon.png"
+  image_path: "final_icon.png"
   min_sdk_android: 21
