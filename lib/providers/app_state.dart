@@ -329,11 +329,59 @@ class AppState extends ChangeNotifier {
       debugPrint('✅ Sync successful! New version: $_dataVersion');
     } catch (e) {
       // Handle error
-      debugPrint('❌ Sync failed: $e');
-      setSyncError(e.toString());
+      final errorMessage = e.toString();
+      debugPrint('❌ Sync failed: $errorMessage');
+
+      // Check if it's a token expiration error
+      if (_isTokenExpiredError(errorMessage)) {
+        debugPrint('🔑 Token expired, pausing sync');
+        _handleTokenExpiration();
+      } else {
+        // Regular sync error - show error but keep local changes
+        setSyncError(errorMessage);
+
+        // Schedule automatic retry after 30 seconds
+        _scheduleRetry();
+      }
     } finally {
       _isSyncing = false;
     }
+  }
+
+  /// Check if error is due to token expiration
+  bool _isTokenExpiredError(String error) {
+    final lowerError = error.toLowerCase();
+    return lowerError.contains('token') &&
+        (lowerError.contains('expired') ||
+            lowerError.contains('invalid') ||
+            lowerError.contains('unauthorized') ||
+            lowerError.contains('401'));
+  }
+
+  /// Handle token expiration
+  void _handleTokenExpiration() {
+    // Pause syncing
+    _syncDebounceTimer?.cancel();
+
+    // Set error status with specific message
+    setSyncError('Session expired. Please login again.');
+
+    // Note: User will need to re-login
+    // After re-login, sync will automatically resume
+    debugPrint('⏸️ Sync paused. Waiting for re-login...');
+  }
+
+  /// Schedule automatic retry for failed sync
+  void _scheduleRetry() {
+    // Cancel any existing retry timer
+    _syncDebounceTimer?.cancel();
+
+    // Schedule retry after 30 seconds
+    debugPrint('⏰ Scheduling retry in 30 seconds...');
+    _syncDebounceTimer = Timer(const Duration(seconds: 30), () {
+      debugPrint('🔄 Retrying sync...');
+      _pushToCloud();
+    });
   }
 
   /// Manually trigger sync (for pull-to-refresh, etc.)

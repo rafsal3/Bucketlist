@@ -15,6 +15,7 @@ import '../widgets/progress_ring.dart';
 import 'manage_categories_screen.dart';
 import 'customization_screen.dart';
 import 'cloud_sync_screen.dart';
+import '../models/sync_status.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -744,7 +745,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                   size: 70,
                                 ),
                                 SizedBox(width: 8),
-                                SizedBox(width: 8),
+                                // Sync Status Indicator
+                                if (appState.isLoggedIn) ...[
+                                  _buildSyncStatusIndicator(appState),
+                                  SizedBox(width: 8),
+                                ],
                                 // Settings Button
                                 Container(
                                   decoration: BoxDecoration(
@@ -981,6 +986,52 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSyncStatusIndicator(AppState appState) {
+    IconData icon;
+    Color color;
+    String tooltip;
+
+    switch (appState.syncStatus) {
+      case SyncStatus.syncing:
+        icon = Icons.cloud_sync_rounded;
+        color = Colors.blue;
+        tooltip = 'Syncing...';
+        break;
+      case SyncStatus.synced:
+        icon = Icons.cloud_done_rounded;
+        color = Colors.green;
+        tooltip = 'Synced';
+        break;
+      case SyncStatus.error:
+        icon = Icons.cloud_off_rounded;
+        color = Colors.red;
+        tooltip = appState.syncErrorMessage ?? 'Sync failed';
+        break;
+      case SyncStatus.localOnly:
+      default:
+        icon = Icons.cloud_queue_rounded;
+        color = Colors.grey;
+        tooltip = 'Pending sync';
+        break;
+    }
+
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        padding: EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
+          size: 20,
+          color: color,
         ),
       ),
     );
