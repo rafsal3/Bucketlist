@@ -230,16 +230,10 @@ class AppState extends ChangeNotifier {
 
     notifyListeners();
 
-    // ✅ SPECIAL CASE: Pull from cloud ONLY if local DB is empty
-    // This handles new device login scenario
-    if (_isLocalDatabaseEmpty()) {
-      debugPrint('📥 Local DB is empty, pulling from cloud...');
-      await _pullFromCloud();
-    } else {
-      debugPrint('📱 Local DB has data, keeping local data');
-      // ❌ NEVER auto-pull if local data exists
-      // ✅ User data stays local until they make changes
-    }
+    // ✅ ALWAYS Pull from cloud on login
+    // This ensures the app starts with correct server data
+    debugPrint('📥 Login successful, pulling from cloud...');
+    await _pullFromCloud();
   }
 
   /// Logout user and clear authentication data
@@ -327,6 +321,13 @@ class AppState extends ChangeNotifier {
       // Mark as synced
       setSynced();
       debugPrint('✅ Sync successful! New version: $_dataVersion');
+    } on SyncConflictException catch (e) {
+      // Handle Conflict: Overwrite local data with server data
+      debugPrint(
+          '⚠️ Conflict detected (409)! Server version: ${e.serverVersion}');
+      debugPrint('📥 Overwriting local data with server data...');
+
+      await _applySyncData(e.serverData, e.serverVersion);
     } catch (e) {
       // Handle error
       final errorMessage = e.toString();
@@ -425,55 +426,63 @@ class AppState extends ChangeNotifier {
 
       debugPrint('Received data from cloud, version: $version');
 
-      // ⚠️ STEP 1: Clear local database completely
-      _spaces.clear();
-      debugPrint('🗑️ Local DB cleared');
+      debugPrint('Received data from cloud, version: $version');
 
-      // ⚠️ STEP 2: Replace with remote data (NEVER merge)
-      if (data.containsKey('spaces')) {
-        final List<dynamic> spacesData = data['spaces'] as List<dynamic>;
-        _spaces = spacesData.map((json) => Space.fromJson(json)).toList();
-        debugPrint('📥 Loaded ${_spaces.length} spaces from cloud');
-      }
-
-      // Restore other settings
-      if (data.containsKey('currentSpaceId')) {
-        _currentSpaceId = data['currentSpaceId'] as String;
-      } else if (_spaces.isNotEmpty) {
-        _currentSpaceId = _spaces.first.id;
-      }
-
-      if (data.containsKey('themeColor')) {
-        _themeColor = data['themeColor'] as String;
-      }
-
-      if (data.containsKey('isDarkMode')) {
-        _isDarkMode = data['isDarkMode'] as bool;
-      }
-
-      // Update version from server
-      if (version != null) {
-        _dataVersion = version;
-      }
-
-      // Update lastModifiedAt to current time
-      _lastModifiedAt = DateTime.now().millisecondsSinceEpoch;
-
-      // Save to local storage
-      await _saveData();
-
-      // Mark as synced
-      setSynced();
-      debugPrint(
-          '✅ Pull successful! Version: $_dataVersion, Spaces: ${_spaces.length}');
-
-      // Notify UI
-      notifyListeners();
+      // Apply the data
+      await _applySyncData(data, version);
     } catch (e) {
       // Handle error
       debugPrint('❌ Pull failed: $e');
       setSyncError(e.toString());
     }
+  }
+
+  /// Appply data from server to local state (Overwrite)
+  Future<void> _applySyncData(Map<String, dynamic> data, int? version) async {
+    // ⚠️ STEP 1: Clear local database completely
+    _spaces.clear();
+    debugPrint('🗑️ Local DB cleared');
+
+    // ⚠️ STEP 2: Replace with remote data (NEVER merge)
+    if (data.containsKey('spaces')) {
+      final List<dynamic> spacesData = data['spaces'] as List<dynamic>;
+      _spaces = spacesData.map((json) => Space.fromJson(json)).toList();
+      debugPrint('📥 Loaded ${_spaces.length} spaces from cloud');
+    }
+
+    // Restore other settings
+    if (data.containsKey('currentSpaceId')) {
+      _currentSpaceId = data['currentSpaceId'] as String;
+    } else if (_spaces.isNotEmpty) {
+      _currentSpaceId = _spaces.first.id;
+    }
+
+    if (data.containsKey('themeColor')) {
+      _themeColor = data['themeColor'] as String;
+    }
+
+    if (data.containsKey('isDarkMode')) {
+      _isDarkMode = data['isDarkMode'] as bool;
+    }
+
+    // Update version from server
+    if (version != null) {
+      _dataVersion = version;
+    }
+
+    // Update lastModifiedAt to current time
+    _lastModifiedAt = DateTime.now().millisecondsSinceEpoch;
+
+    // Save to local storage
+    await _saveData();
+
+    // Mark as synced
+    setSynced();
+    debugPrint(
+        '✅ Data applied successfully! Version: $_dataVersion, Spaces: ${_spaces.length}');
+
+    // Notify UI
+    notifyListeners();
   }
 
   // ============================================================================

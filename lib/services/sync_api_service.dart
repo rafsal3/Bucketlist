@@ -77,11 +77,22 @@ class SyncApiService {
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else if (response.statusCode == 409) {
+        // Conflict detected - Server has newer data
+        final body = jsonDecode(response.body);
+        throw SyncConflictException(
+          serverVersion: body['serverVersion'],
+          serverData: body['serverData'],
+        );
       } else {
         final error = jsonDecode(response.body);
         throw Exception(error['message'] ?? 'Push failed');
       }
+    } on SyncConflictException {
+      rethrow;
     } catch (e) {
+      if (e is SyncConflictException)
+        rethrow; // Should be redundant due to 'on' clause but safe
       throw Exception('Push error: $e');
     }
   }
@@ -108,4 +119,17 @@ class SyncApiService {
       throw Exception('Pull error: $e');
     }
   }
+}
+
+class SyncConflictException implements Exception {
+  final int serverVersion;
+  final Map<String, dynamic> serverData;
+
+  SyncConflictException({
+    required this.serverVersion,
+    required this.serverData,
+  });
+
+  @override
+  String toString() => 'SyncConflictException(serverVersion: $serverVersion)';
 }
