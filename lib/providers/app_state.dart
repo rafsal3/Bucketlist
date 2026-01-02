@@ -55,10 +55,26 @@ class AppState extends ChangeNotifier {
   String? get userEmail => _userEmail;
   String? get authToken => _authToken;
 
-  int get totalCompleted =>
-      categories.fold<int>(0, (sum, cat) => sum + cat.completedCount);
-  int get totalItems =>
-      categories.fold<int>(0, (sum, cat) => sum + cat.totalCount);
+  int get totalCompleted {
+    // Count completed items from categories
+    int categoryCompleted =
+        categories.fold<int>(0, (sum, cat) => sum + cat.completedCount);
+    // Add completed uncategorized items
+    int uncategorizedCompleted = currentSpace.uncategorizedItems
+        .where((item) => item.isCompleted)
+        .length;
+    return categoryCompleted + uncategorizedCompleted;
+  }
+
+  int get totalItems {
+    // Count total items from categories
+    int categoryTotal =
+        categories.fold<int>(0, (sum, cat) => sum + cat.totalCount);
+    // Add total uncategorized items
+    int uncategorizedTotal = currentSpace.uncategorizedItems.length;
+    return categoryTotal + uncategorizedTotal;
+  }
+
   double get overallProgress =>
       totalItems == 0 ? 0.0 : totalCompleted / totalItems;
 
