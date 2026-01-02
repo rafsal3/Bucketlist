@@ -4,7 +4,8 @@ import 'package:http/http.dart' as http;
 /// API Service for cloud sync operations
 class SyncApiService {
   // TODO: Replace with your actual backend URL
-  static const String baseUrl = 'http://YOUR_BACKEND_URL';
+  static const String baseUrl =
+      'https://offline-first-sync-backend.onrender.com';
 
   /// Register a new user
   Future<Map<String, dynamic>> register(String email, String password) async {

@@ -1,0 +1,187 @@
+================================================================================
+                    BUCKET LIST API ENDPOINTS
+================================================================================
+
+BASE URL: https://offline-first-sync-backend.onrender.com
+
+================================================================================
+                    AUTHENTICATION ENDPOINTS
+================================================================================
+
+1. REGISTER NEW USER
+   Method: POST
+   Endpoint: /auth/register
+   Full URL: https://offline-first-sync-backend.onrender.com/auth/register
+   
+   Request Body:
+   {
+     "email": "user@example.com",
+     "password": "yourpassword"
+   }
+   
+   Response (201 Created):
+   {
+     "message": "User registered successfully",
+     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+     "userId": "507f1f77bcf86cd799439011"
+   }
+   
+   Error Responses:
+   - 400: Email and password are required
+   - 400: Password must be at least 6 characters
+   - 409: User already exists
+   - 500: Registration failed
+
+--------------------------------------------------------------------------------
+
+2. LOGIN
+   Method: POST
+   Endpoint: /auth/login
+   Full URL: https://offline-first-sync-backend.onrender.com/auth/login
+   
+   Request Body:
+   {
+     "email": "user@example.com",
+     "password": "yourpassword"
+   }
+   
+   Response (200 OK):
+   {
+     "message": "Login successful",
+     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+     "userId": "507f1f77bcf86cd799439011"
+   }
+   
+   Error Responses:
+   - 400: Email and password are required
+   - 401: Invalid credentials
+   - 500: Login failed
+
+================================================================================
+                    SYNC ENDPOINTS (Requires Authentication)
+================================================================================
+
+⚠️  All sync endpoints require JWT token in Authorization header:
+    Authorization: Bearer <your-jwt-token>
+
+--------------------------------------------------------------------------------
+
+3. PUSH DATA TO SERVER
+   Method: POST
+   Endpoint: /sync/push
+   Full URL: https://offline-first-sync-backend.onrender.com/sync/push
+   
+   Headers:
+   Authorization: Bearer <your-jwt-token>
+   Content-Type: application/json
+   
+   Request Body:
+   {
+     "data": {
+       "spaces": [...],
+       "categories": [...],
+       "items": [...]
+     },
+     "version": 5  // Optional: for conflict detection
+   }
+   
+   Response (200 OK):
+   {
+     "message": "Data synced successfully",
+     "version": 6,
+     "lastModifiedAt": "2026-01-02T07:59:18.123Z"
+   }
+   
+   Conflict Response (409 Conflict):
+   {
+     "error": "Conflict detected",
+     "serverVersion": 7,
+     "serverData": { ... }
+   }
+   
+   Error Responses:
+   - 400: Data is required
+   - 401: Authentication required / Invalid or expired token
+   - 409: Conflict detected (version mismatch)
+   - 500: Sync push failed
+
+--------------------------------------------------------------------------------
+
+4. PULL DATA FROM SERVER
+   Method: GET
+   Endpoint: /sync/pull
+   Full URL: https://offline-first-sync-backend.onrender.com/sync/pull
+   
+   Headers:
+   Authorization: Bearer <your-jwt-token>
+   
+   Response (200 OK):
+   {
+     "data": {
+       "spaces": [...],
+       "categories": [...],
+       "items": [...]
+     },
+     "version": 6,
+     "lastModifiedAt": "2026-01-02T07:59:18.123Z"
+   }
+   
+   Response for New User (200 OK):
+   {
+     "data": {},
+     "version": 0,
+     "lastModifiedAt": null
+   }
+   
+   Error Responses:
+   - 401: Authentication required / Invalid or expired token
+   - 500: Sync pull failed
+
+================================================================================
+                    HEALTH CHECK
+================================================================================
+
+5. SERVER STATUS
+   Method: GET
+   Endpoint: /
+   Full URL: https://offline-first-sync-backend.onrender.com/
+   
+   Response (200 OK):
+   {
+     "message": "Bucket List Sync API is running"
+   }
+
+================================================================================
+                    USAGE FLOW
+================================================================================
+
+1. FIRST TIME USER:
+   a. Register: POST /auth/register
+   b. Save the token returned
+   c. Push initial data: POST /sync/push (with token)
+
+2. EXISTING USER:
+   a. Login: POST /auth/login
+   b. Save the token returned
+   c. Pull latest data: GET /sync/pull (with token)
+   d. Make local changes
+   e. Push updated data: POST /sync/push (with token)
+
+3. SYNC STRATEGY:
+   - Pull data when app starts (after login)
+   - Push data after any local changes
+   - Use version field for conflict detection
+   - Token expires in 30 days
+
+================================================================================
+                    NOTES
+================================================================================
+
+- All endpoints return JSON
+- JWT tokens expire after 30 days
+- Maximum payload size: 10MB
+- The "data" field accepts any JSON structure (full bucket list snapshot)
+- Version tracking helps detect conflicts
+- CORS is enabled for cross-origin requests
+
+================================================================================
