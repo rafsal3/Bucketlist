@@ -6,6 +6,8 @@ class Space {
   String? icon;
   bool isHidden;
   List<Category> categories;
+  List<ChecklistItem>
+      uncategorizedItems; // Dedicated storage for uncategorized items
 
   Space({
     required this.id,
@@ -13,7 +15,9 @@ class Space {
     this.icon,
     this.isHidden = false,
     List<Category>? categories,
-  }) : categories = categories ?? [];
+    List<ChecklistItem>? uncategorizedItems,
+  })  : categories = categories ?? [],
+        uncategorizedItems = uncategorizedItems ?? [];
 
   Map<String, dynamic> toJson() {
     return {
@@ -22,6 +26,8 @@ class Space {
       'icon': icon,
       'isHidden': isHidden,
       'categories': categories.map((cat) => cat.toJson()).toList(),
+      'uncategorizedItems':
+          uncategorizedItems.map((item) => item.toJson()).toList(),
     };
   }
 
@@ -33,6 +39,11 @@ class Space {
       isHidden: json['isHidden'] as bool? ?? false,
       categories: (json['categories'] as List<dynamic>?)
               ?.map((item) => Category.fromJson(item as Map<String, dynamic>))
+              .toList() ??
+          [],
+      uncategorizedItems: (json['uncategorizedItems'] as List<dynamic>?)
+              ?.map((item) =>
+                  ChecklistItem.fromJson(item as Map<String, dynamic>))
               .toList() ??
           [],
     );

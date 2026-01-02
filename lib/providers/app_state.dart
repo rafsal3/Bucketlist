@@ -91,6 +91,9 @@ class AppState extends ChangeNotifier {
         _spaces = decoded.map((json) => Space.fromJson(json)).toList();
         _currentSpaceId = prefs.getString('currentSpaceId') ??
             (_spaces.isNotEmpty ? _spaces.first.id : '');
+
+        // Migration: Extract orphaned uncategorized items from categories
+        _migrateOrphanedItems();
       } else {
         // Legacy migration or fresh install
         final String? categoriesJson = prefs.getString('categories');
@@ -116,6 +119,9 @@ class AppState extends ChangeNotifier {
 
         _spaces = [personalSpace];
         _currentSpaceId = personalSpace.id;
+
+        // Migration: Extract orphaned uncategorized items
+        _migrateOrphanedItems();
 
         // Save immediately to complete migration
         _saveData();
@@ -159,6 +165,38 @@ class AppState extends ChangeNotifier {
       await prefs.setInt('lastModifiedAt', _lastModifiedAt);
     } catch (e) {
       debugPrint('Error saving data: $e');
+    }
+  }
+
+  /// Migrates orphaned uncategorized items from categories to dedicated storage
+  /// This fixes the bug where uncategorized items were stored inside category objects
+  void _migrateOrphanedItems() {
+    bool migrationNeeded = false;
+
+    for (var space in _spaces) {
+      for (var category in space.categories) {
+        // Find items with null categoryId (orphaned uncategorized items)
+        final orphanedItems =
+            category.items.where((item) => item.categoryId == null).toList();
+
+        if (orphanedItems.isNotEmpty) {
+          migrationNeeded = true;
+          debugPrint(
+              'Found ${orphanedItems.length} orphaned items in category ${category.name}');
+
+          // Move them to the dedicated uncategorizedItems list
+          space.uncategorizedItems.addAll(orphanedItems);
+
+          // Remove them from the category
+          category.items.removeWhere((item) => item.categoryId == null);
+        }
+      }
+    }
+
+    if (migrationNeeded) {
+      debugPrint(
+          'Migration completed: Moved orphaned items to uncategorizedItems');
+      _saveData(); // Save the migrated data
     }
   }
 
@@ -680,14 +718,21 @@ class AppState extends ChangeNotifier {
     });
   }
 
-  // Get all items across all visible categories
+  // Get all items across all visible categories AND uncategorized items
   List<models.ChecklistItem> getAllItems() {
     List<models.ChecklistItem> allItems = [];
+
+    // Add uncategorized items first
+    allItems.addAll(currentSpace.uncategorizedItems);
+
+    // Add items from visible categories
     for (var category in categories) {
       if (!category.isHidden) {
-        allItems.addAll(category.items);
+        allItems.addAll(
+            category.items.where((item) => item.categoryId == category.id));
       }
     }
+
     // Sort by ID (which contains timestamp) in descending order (latest first)
     allItems.sort((a, b) {
       // Extract timestamp from ID (format: item_<timestamp>)
@@ -710,14 +755,12 @@ class AppState extends ChangeNotifier {
       );
 
       if (categoryId != null) {
+        // Add to specific category
         final category = categories.firstWhere((cat) => cat.id == categoryId);
         category.items.insert(0, item);
       } else {
-        // For uncategorized items, we'll add them to a special handling
-        // They will be stored in the first category but marked as uncategorized
-        if (categories.isNotEmpty) {
-          categories.first.items.insert(0, item);
-        }
+        // Add to dedicated uncategorized items list
+        currentSpace.uncategorizedItems.insert(0, item);
       }
     });
   }
@@ -765,6 +808,16 @@ class AppState extends ChangeNotifier {
 
   void toggleItem(String itemId) {
     mutateData(() {
+      // Check uncategorized items first
+      final uncatIndex = currentSpace.uncategorizedItems
+          .indexWhere((item) => item.id == itemId);
+      if (uncatIndex != -1) {
+        currentSpace.uncategorizedItems[uncatIndex].isCompleted =
+            !currentSpace.uncategorizedItems[uncatIndex].isCompleted;
+        return;
+      }
+
+      // Check categorized items
       for (var category in categories) {
         final itemIndex =
             category.items.indexWhere((item) => item.id == itemId);
@@ -779,6 +832,10 @@ class AppState extends ChangeNotifier {
 
   void deleteItem(String itemId) {
     mutateData(() {
+      // Remove from uncategorized items
+      currentSpace.uncategorizedItems.removeWhere((item) => item.id == itemId);
+
+      // Remove from categorized items
       for (var category in categories) {
         category.items.removeWhere((item) => item.id == itemId);
       }
@@ -789,13 +846,22 @@ class AppState extends ChangeNotifier {
     mutateData(() {
       models.ChecklistItem? itemToMove;
 
-      // Find and remove the item from its current category
-      for (var category in categories) {
-        final itemIndex =
-            category.items.indexWhere((item) => item.id == itemId);
-        if (itemIndex != -1) {
-          itemToMove = category.items.removeAt(itemIndex);
-          break;
+      // Find and remove from uncategorized items
+      final uncatIndex = currentSpace.uncategorizedItems
+          .indexWhere((item) => item.id == itemId);
+      if (uncatIndex != -1) {
+        itemToMove = currentSpace.uncategorizedItems.removeAt(uncatIndex);
+      }
+
+      // If not found, find and remove from categories
+      if (itemToMove == null) {
+        for (var category in categories) {
+          final itemIndex =
+              category.items.indexWhere((item) => item.id == itemId);
+          if (itemIndex != -1) {
+            itemToMove = category.items.removeAt(itemIndex);
+            break;
+          }
         }
       }
 
@@ -803,14 +869,13 @@ class AppState extends ChangeNotifier {
         itemToMove.categoryId = newCategoryId;
 
         if (newCategoryId != null) {
+          // Move to specific category
           final newCategory =
               categories.firstWhere((cat) => cat.id == newCategoryId);
-          newCategory.items.insert(0, itemToMove); // Insert at beginning
+          newCategory.items.insert(0, itemToMove);
         } else {
           // Move to uncategorized
-          if (categories.isNotEmpty) {
-            categories.first.items.insert(0, itemToMove); // Insert at beginning
-          }
+          currentSpace.uncategorizedItems.insert(0, itemToMove);
         }
       }
     });
@@ -830,11 +895,6 @@ class AppState extends ChangeNotifier {
 
   // Get uncategorized items
   List<models.ChecklistItem> getUncategorizedItems() {
-    List<models.ChecklistItem> uncategorized = [];
-    for (var category in categories) {
-      uncategorized
-          .addAll(category.items.where((item) => item.categoryId == null));
-    }
-    return uncategorized;
+    return currentSpace.uncategorizedItems;
   }
 }
