@@ -14,6 +14,7 @@ import '../widgets/progress_ring.dart';
 
 import 'manage_categories_screen.dart';
 import 'customization_screen.dart';
+import 'cloud_sync_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -208,6 +209,84 @@ class _HomeScreenState extends State<HomeScreen> {
                       builder: (context) => ManageSpacesScreen(),
                     ),
                   );
+                },
+              ),
+              // Cloud Sync Option - Show login if not logged in
+              Consumer<AppState>(
+                builder: (context, appState, child) {
+                  if (!appState.isLoggedIn) {
+                    // Show "Enable Cloud Sync" option
+                    return ListTile(
+                      title: Text('Enable Cloud Sync'),
+                      subtitle: Text('Sync across devices'),
+                      leading: Icon(Icons.cloud_sync_rounded),
+                      trailing: Icon(Icons.chevron_right_rounded),
+                      onTap: () {
+                        Navigator.pop(context); // Close the modal
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CloudSyncScreen(),
+                          ),
+                        );
+                      },
+                    );
+                  } else {
+                    // Show logged in status and logout option
+                    return Column(
+                      children: [
+                        ListTile(
+                          title: Text('Cloud Sync'),
+                          subtitle: Text(appState.userEmail ?? 'Logged in'),
+                          leading: Icon(
+                            Icons.cloud_done_rounded,
+                            color: Colors.green,
+                          ),
+                          trailing: TextButton(
+                            onPressed: () async {
+                              // Show confirmation dialog
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: Text('Logout'),
+                                  content: Text(
+                                      'Are you sure you want to logout? Your data will remain on this device.'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
+                                      child: Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      child: Text('Logout'),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirm == true) {
+                                await appState.logout();
+                                if (context.mounted) {
+                                  Navigator.pop(context); // Close settings
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Logged out successfully'),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            child: Text('Logout'),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
                 },
               ),
               SizedBox(height: 16),

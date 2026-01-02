@@ -17,6 +17,11 @@ class AppState extends ChangeNotifier {
   SyncStatus _syncStatus = SyncStatus.localOnly;
   String? _syncErrorMessage;
 
+  // Authentication state
+  bool _isLoggedIn = false;
+  String? _userEmail;
+  String? _authToken;
+
   // Getters for the current space
   Space get currentSpace => _spaces.firstWhere(
         (s) => s.id == _currentSpaceId,
@@ -37,6 +42,11 @@ class AppState extends ChangeNotifier {
   SyncStatus get syncStatus => _syncStatus;
   String? get syncErrorMessage => _syncErrorMessage;
 
+  // Authentication getters
+  bool get isLoggedIn => _isLoggedIn;
+  String? get userEmail => _userEmail;
+  String? get authToken => _authToken;
+
   int get totalCompleted =>
       categories.fold<int>(0, (sum, cat) => sum + cat.completedCount);
   int get totalItems =>
@@ -54,6 +64,11 @@ class AppState extends ChangeNotifier {
       _isDarkMode = prefs.getBool('isDarkMode') ?? false;
       _themeColor = prefs.getString('themeColor') ?? 'blue';
       _lastModifiedAt = prefs.getInt('lastModifiedAt') ?? 0;
+
+      // Load authentication state
+      _isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+      _userEmail = prefs.getString('userEmail');
+      _authToken = prefs.getString('authToken');
 
       final String? spacesJson = prefs.getString('spaces');
 
@@ -181,6 +196,44 @@ class AppState extends ChangeNotifier {
       _syncErrorMessage = null;
       notifyListeners();
     }
+  }
+
+  // ============================================================================
+  // AUTHENTICATION METHODS
+  // ============================================================================
+
+  /// Login user with email and auth token
+  Future<void> login(String email, String token) async {
+    _isLoggedIn = true;
+    _userEmail = email;
+    _authToken = token;
+
+    // Persist authentication state
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true);
+    await prefs.setString('userEmail', email);
+    await prefs.setString('authToken', token);
+
+    notifyListeners();
+  }
+
+  /// Logout user and clear authentication data
+  Future<void> logout() async {
+    _isLoggedIn = false;
+    _userEmail = null;
+    _authToken = null;
+
+    // Clear authentication state from storage
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('isLoggedIn');
+    await prefs.remove('userEmail');
+    await prefs.remove('authToken');
+
+    // Reset sync status
+    _syncStatus = SyncStatus.localOnly;
+    _syncErrorMessage = null;
+
+    notifyListeners();
   }
 
   // ============================================================================
