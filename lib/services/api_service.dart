@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart';
 
 class ApiService {
   // Base URL configuration
-  // Using Render cloud backend server
-  static const String baseUrl = 'https://backendbucket.onrender.com/api/v1';
+  // Using local development server
+  static const String baseUrl = 'http://localhost:5000/api/v1';
 
   String? _authToken;
 

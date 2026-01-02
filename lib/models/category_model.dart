@@ -3,16 +3,30 @@ class ChecklistItem {
   String text;
   bool isCompleted;
   String? categoryId; // null means uncategorized
+  String? spaceId;
   String? imageUrl;
   String? description;
+  int order;
+  bool deleted;
+  String? deviceId;
+  String? userId;
+  DateTime? createdAt;
+  DateTime? updatedAt;
 
   ChecklistItem({
     required this.id,
     required this.text,
     this.isCompleted = false,
     this.categoryId,
+    this.spaceId,
     this.imageUrl,
     this.description,
+    this.order = 0,
+    this.deleted = false,
+    this.deviceId,
+    this.userId,
+    this.createdAt,
+    this.updatedAt,
   });
 
   Map<String, dynamic> toJson() {
@@ -21,8 +35,15 @@ class ChecklistItem {
       'text': text,
       'isCompleted': isCompleted,
       'categoryId': categoryId,
+      'spaceId': spaceId,
       'imageUrl': imageUrl,
       'description': description,
+      'order': order,
+      'deleted': deleted,
+      'deviceId': deviceId,
+      'userId': userId,
+      'createdAt': createdAt?.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
     };
   }
 
@@ -32,8 +53,19 @@ class ChecklistItem {
       text: json['text'] as String,
       isCompleted: json['isCompleted'] as bool? ?? false,
       categoryId: json['categoryId'] as String?,
+      spaceId: json['spaceId'] as String?,
       imageUrl: json['imageUrl'] as String?,
       description: json['description'] as String?,
+      order: json['order'] as int? ?? 0,
+      deleted: json['deleted'] as bool? ?? false,
+      deviceId: json['deviceId'] as String?,
+      userId: json['userId'] as String?,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : null,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'] as String)
+          : null,
     );
   }
 }
@@ -43,6 +75,13 @@ class Category {
   String name;
   String icon;
   bool isHidden;
+  String? spaceId;
+  int order;
+  bool deleted;
+  String? deviceId;
+  String? userId;
+  DateTime? createdAt;
+  DateTime? updatedAt;
   List<ChecklistItem> items;
 
   Category({
@@ -50,6 +89,13 @@ class Category {
     required this.name,
     required this.icon,
     this.isHidden = false,
+    this.spaceId,
+    this.order = 0,
+    this.deleted = false,
+    this.deviceId,
+    this.userId,
+    this.createdAt,
+    this.updatedAt,
     List<ChecklistItem>? items,
   }) : items = items ?? [];
 
@@ -65,6 +111,13 @@ class Category {
       'name': name,
       'icon': icon,
       'isHidden': isHidden,
+      'spaceId': spaceId,
+      'order': order,
+      'deleted': deleted,
+      'deviceId': deviceId,
+      'userId': userId,
+      'createdAt': createdAt?.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
       'items': items.map((item) => item.toJson()).toList(),
     };
   }
@@ -75,6 +128,17 @@ class Category {
       name: json['name'] as String,
       icon: json['icon'] as String,
       isHidden: json['isHidden'] as bool? ?? false,
+      spaceId: json['spaceId'] as String?,
+      order: json['order'] as int? ?? 0,
+      deleted: json['deleted'] as bool? ?? false,
+      deviceId: json['deviceId'] as String?,
+      userId: json['userId'] as String?,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : null,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'] as String)
+          : null,
       items: (json['items'] as List<dynamic>?)
               ?.map((item) =>
                   ChecklistItem.fromJson(item as Map<String, dynamic>))
