@@ -31,6 +31,10 @@ class AppState extends ChangeNotifier {
   int _dataVersion = 0; // Server version number
   bool _isSyncing = false; // Prevent concurrent syncs
 
+  // 🔒 Mutation Queue - Prevents data loss during sync
+  bool _isMutating = false;
+  final List<Function> _pendingMutations = [];
+
   // Getters for the current space
   Space get currentSpace => _spaces.firstWhere(
         (s) => s.id == _currentSpaceId,
@@ -175,6 +179,12 @@ class AppState extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+
+    // ✅ Immediate sync on app start (if logged in)
+    if (_isLoggedIn && _authToken != null) {
+      debugPrint('🚀 App started, triggering immediate sync...');
+      _pushToCloud();
+    }
   }
 
   /// Saves ONLY non-space settings (preferences, auth, metadata)
@@ -334,9 +344,10 @@ class AppState extends ChangeNotifier {
       await _pullFromCloud();
     } else {
       debugPrint('✅ Existing user login - preserving local data');
-      debugPrint('🔄 Sync will happen automatically via debounced push');
-      // Trigger a sync to push any local changes
-      _markSyncPending();
+      debugPrint('🚀 Triggering immediate push to sync/converge...');
+
+      // Immediate push instead of debounced
+      await _pushToCloud();
     }
   }
 
@@ -519,6 +530,9 @@ class AppState extends ChangeNotifier {
       }
     } finally {
       _isSyncing = false;
+
+      // 🔄 Process any pending mutations that occurred during sync
+      await _processPendingMutations();
     }
   }
 
@@ -605,6 +619,9 @@ class AppState extends ChangeNotifier {
       // Handle error
       debugPrint('❌ Pull failed: $e');
       setSyncError(e.toString());
+    } finally {
+      // 🔄 Process any pending mutations that occurred during pull
+      await _processPendingMutations();
     }
   }
 
@@ -678,24 +695,74 @@ class AppState extends ChangeNotifier {
   // UNIFIED MUTATION WRAPPER
   // ============================================================================
 
+  /// Executes a mutation action with proper sync coordination
+  /// If a sync is in progress, queues the mutation for later execution
   Future<void> mutateData(Function action) async {
-    // 1. Execute the mutation action
-    action();
+    // If currently syncing, queue the mutation
+    if (_isSyncing) {
+      debugPrint(
+          '⚠️ Sync in progress, queuing mutation (queue size: ${_pendingMutations.length + 1})');
+      _pendingMutations.add(action);
+      return;
+    }
 
-    // 2. Update timestamp and mark as needing sync
-    _updateLastModified();
+    // If another mutation is in progress, queue this one
+    if (_isMutating) {
+      debugPrint(
+          '⚠️ Mutation in progress, queuing (queue size: ${_pendingMutations.length + 1})');
+      _pendingMutations.add(action);
+      return;
+    }
 
-    // 3. Persist to Hive (Fast & Safe)
-    await _persistSpaces();
+    await _executeMutation(action);
+  }
 
-    // 4. Save metadata (current space, etc)
-    await _savePreferences();
+  /// Internal method to execute a single mutation
+  Future<void> _executeMutation(Function action) async {
+    _isMutating = true;
 
-    // 5. Notify UI listeners
-    notifyListeners();
+    try {
+      // 1. Execute the mutation action
+      action();
 
-    // 6. Trigger debounced cloud sync (if logged in)
-    _markSyncPending();
+      // 2. Update timestamp and mark as needing sync
+      _updateLastModified();
+
+      // 3. Persist to Hive (Fast & Safe)
+      await _persistSpaces();
+
+      // 4. Save metadata (current space, etc)
+      await _savePreferences();
+
+      // 5. Notify UI listeners
+      notifyListeners();
+
+      // 6. Trigger debounced cloud sync (if logged in)
+      _markSyncPending();
+    } finally {
+      _isMutating = false;
+    }
+  }
+
+  /// Process all pending mutations that were queued during sync
+  Future<void> _processPendingMutations() async {
+    if (_pendingMutations.isEmpty) {
+      return;
+    }
+
+    debugPrint(
+        '🔄 Processing ${_pendingMutations.length} pending mutations...');
+
+    // Create a copy of the queue and clear it
+    final mutations = List<Function>.from(_pendingMutations);
+    _pendingMutations.clear();
+
+    // Execute each mutation sequentially
+    for (final mutation in mutations) {
+      await _executeMutation(mutation);
+    }
+
+    debugPrint('✅ All pending mutations processed!');
   }
 
   Future<void> _saveTheme() async {

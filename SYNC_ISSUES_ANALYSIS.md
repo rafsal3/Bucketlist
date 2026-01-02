@@ -2,6 +2,21 @@
 
 ## Date: 2026-01-02
 
+## ✅ FIXED: First-Time Sync Race Condition
+
+**Status:** IMPLEMENTED (2026-01-02)
+
+See detailed fix documentation: [FIRST_TIME_SYNC_RACE_CONDITION_FIX.md](./FIRST_TIME_SYNC_RACE_CONDITION_FIX.md)
+
+**Summary:**
+- Added mutation queue to prevent data loss during sync
+- Mutations are queued if sync is in progress
+- Queue is processed after sync completes
+- **Changed trigger logic:** Sync (Push) fires immediately on App Start and Login (for existing data)
+- No breaking changes to existing functionality
+
+---
+
 ## Issues Identified
 
 ### 🔴 CRITICAL ISSUE #1: Pull from Cloud Called on Every Login
