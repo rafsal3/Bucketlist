@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_state.dart';
+import '../services/sync_api_service.dart';
 
 /// Cloud Sync Authentication Screen
 /// Only shown when user is not logged in
@@ -13,6 +16,7 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _syncApi = SyncApiService();
 
   bool _isLogin = true; // Toggle between login and register
   bool _isLoading = false;
@@ -35,8 +39,28 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
     });
 
     try {
-      // TODO: Implement actual authentication logic in Phase 3.2
-      await Future.delayed(const Duration(seconds: 2)); // Simulate API call
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+      final appState = Provider.of<AppState>(context, listen: false);
+
+      Map<String, dynamic> response;
+
+      if (_isLogin) {
+        // Login
+        response = await _syncApi.login(email, password);
+      } else {
+        // Register
+        response = await _syncApi.register(email, password);
+      }
+
+      // Extract token from response
+      final token = response['token'] as String?;
+      if (token == null) {
+        throw Exception('No token received from server');
+      }
+
+      // Save auth state
+      await appState.login(email, token);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

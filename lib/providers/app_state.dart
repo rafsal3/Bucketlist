@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/category_model.dart' as models;
 import '../models/space_model.dart';
 import '../models/sync_status.dart';
+import '../services/sync_api_service.dart';
 
 class AppState extends ChangeNotifier {
   List<Space> _spaces = [];
@@ -21,6 +23,12 @@ class AppState extends ChangeNotifier {
   bool _isLoggedIn = false;
   String? _userEmail;
   String? _authToken;
+
+  // Sync infrastructure
+  final SyncApiService _syncApi = SyncApiService();
+  Timer? _syncDebounceTimer;
+  int _dataVersion = 0; // Server version number
+  bool _isSyncing = false; // Prevent concurrent syncs
 
   // Getters for the current space
   Space get currentSpace => _spaces.firstWhere(
@@ -56,8 +64,13 @@ class AppState extends ChangeNotifier {
 
   AppState() {
     _loadData();
+    // ❌ NEVER auto-pull from cloud on startup
+    // ✅ Only loads local data from SharedPreferences
   }
 
+  /// Loads data from local storage ONLY
+  /// ❌ NEVER fetches from cloud automatically
+  /// ✅ Push-only sync - no auto-pull on launch
   Future<void> _loadData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -203,6 +216,7 @@ class AppState extends ChangeNotifier {
   // ============================================================================
 
   /// Login user with email and auth token
+  /// SPECIAL CASE: If local DB is empty, pulls from cloud (new device login)
   Future<void> login(String email, String token) async {
     _isLoggedIn = true;
     _userEmail = email;
@@ -215,6 +229,17 @@ class AppState extends ChangeNotifier {
     await prefs.setString('authToken', token);
 
     notifyListeners();
+
+    // ✅ SPECIAL CASE: Pull from cloud ONLY if local DB is empty
+    // This handles new device login scenario
+    if (_isLocalDatabaseEmpty()) {
+      debugPrint('📥 Local DB is empty, pulling from cloud...');
+      await _pullFromCloud();
+    } else {
+      debugPrint('📱 Local DB has data, keeping local data');
+      // ❌ NEVER auto-pull if local data exists
+      // ✅ User data stays local until they make changes
+    }
   }
 
   /// Logout user and clear authentication data
@@ -237,6 +262,173 @@ class AppState extends ChangeNotifier {
   }
 
   // ============================================================================
+  // CLOUD SYNC METHODS
+  // ============================================================================
+
+  /// Triggers a debounced sync to cloud
+  /// Waits 2 seconds after last change before syncing
+  void _markSyncPending() {
+    // Cancel existing timer if any
+    _syncDebounceTimer?.cancel();
+
+    // Only sync if logged in
+    if (!_isLoggedIn || _authToken == null) {
+      return;
+    }
+
+    // Set up new debounced timer (2 seconds)
+    _syncDebounceTimer = Timer(const Duration(seconds: 2), () {
+      _pushToCloud();
+    });
+  }
+
+  /// Push local data to cloud
+  Future<void> _pushToCloud() async {
+    // Prevent concurrent syncs
+    if (_isSyncing) {
+      debugPrint('Sync already in progress, skipping...');
+      return;
+    }
+
+    // Must be logged in
+    if (!_isLoggedIn || _authToken == null) {
+      debugPrint('Not logged in, skipping sync');
+      return;
+    }
+
+    _isSyncing = true;
+    setSyncing(); // Update UI to show syncing status
+
+    try {
+      // Prepare data payload
+      final data = {
+        'spaces': _spaces.map((space) => space.toJson()).toList(),
+        'currentSpaceId': _currentSpaceId,
+        'themeColor': _themeColor,
+        'isDarkMode': _isDarkMode,
+      };
+
+      debugPrint(
+          'Pushing to cloud... version: $_dataVersion, lastModified: $_lastModifiedAt');
+
+      // Call API
+      final response = await _syncApi.pushToCloud(
+        authToken: _authToken!,
+        version: _dataVersion,
+        lastModifiedAt: _lastModifiedAt,
+        data: data,
+      );
+
+      // Update version from server
+      if (response.containsKey('version')) {
+        _dataVersion = response['version'] as int;
+      }
+
+      // Mark as synced
+      setSynced();
+      debugPrint('✅ Sync successful! New version: $_dataVersion');
+    } catch (e) {
+      // Handle error
+      debugPrint('❌ Sync failed: $e');
+      setSyncError(e.toString());
+    } finally {
+      _isSyncing = false;
+    }
+  }
+
+  /// Manually trigger sync (for pull-to-refresh, etc.)
+  Future<void> manualSync() async {
+    await _pushToCloud();
+  }
+
+  /// Check if local database is empty
+  /// Returns true if no spaces exist (fresh install or cleared data)
+  bool _isLocalDatabaseEmpty() {
+    return _spaces.isEmpty;
+  }
+
+  /// Pull data from cloud and replace local database completely
+  /// ⚠️ ONLY called when local DB is empty (new device login)
+  /// ⚠️ NEVER merges - always replaces completely
+  Future<void> _pullFromCloud() async {
+    // Must be logged in
+    if (!_isLoggedIn || _authToken == null) {
+      debugPrint('Not logged in, cannot pull from cloud');
+      return;
+    }
+
+    setSyncing(); // Update UI to show syncing status
+
+    try {
+      debugPrint('Pulling from cloud...');
+
+      // Call API
+      final response = await _syncApi.pullFromCloud(
+        authToken: _authToken!,
+      );
+
+      // Extract data and version
+      final version = response['version'] as int?;
+      final data = response['data'] as Map<String, dynamic>?;
+
+      if (data == null) {
+        throw Exception('No data received from server');
+      }
+
+      debugPrint('Received data from cloud, version: $version');
+
+      // ⚠️ STEP 1: Clear local database completely
+      _spaces.clear();
+      debugPrint('🗑️ Local DB cleared');
+
+      // ⚠️ STEP 2: Replace with remote data (NEVER merge)
+      if (data.containsKey('spaces')) {
+        final List<dynamic> spacesData = data['spaces'] as List<dynamic>;
+        _spaces = spacesData.map((json) => Space.fromJson(json)).toList();
+        debugPrint('📥 Loaded ${_spaces.length} spaces from cloud');
+      }
+
+      // Restore other settings
+      if (data.containsKey('currentSpaceId')) {
+        _currentSpaceId = data['currentSpaceId'] as String;
+      } else if (_spaces.isNotEmpty) {
+        _currentSpaceId = _spaces.first.id;
+      }
+
+      if (data.containsKey('themeColor')) {
+        _themeColor = data['themeColor'] as String;
+      }
+
+      if (data.containsKey('isDarkMode')) {
+        _isDarkMode = data['isDarkMode'] as bool;
+      }
+
+      // Update version from server
+      if (version != null) {
+        _dataVersion = version;
+      }
+
+      // Update lastModifiedAt to current time
+      _lastModifiedAt = DateTime.now().millisecondsSinceEpoch;
+
+      // Save to local storage
+      await _saveData();
+
+      // Mark as synced
+      setSynced();
+      debugPrint(
+          '✅ Pull successful! Version: $_dataVersion, Spaces: ${_spaces.length}');
+
+      // Notify UI
+      notifyListeners();
+    } catch (e) {
+      // Handle error
+      debugPrint('❌ Pull failed: $e');
+      setSyncError(e.toString());
+    }
+  }
+
+  // ============================================================================
   // UNIFIED MUTATION WRAPPER
   // ============================================================================
 
@@ -247,6 +439,7 @@ class AppState extends ChangeNotifier {
   /// 3. Sync status is marked as pending (localOnly)
   /// 4. Data is persisted to storage
   /// 5. UI is notified
+  /// 6. Cloud sync is triggered (debounced)
   ///
   /// This makes cloud sync trivial later - just add sync logic here!
   Future<void> mutateData(Function action) async {
@@ -262,7 +455,8 @@ class AppState extends ChangeNotifier {
     // 4. Notify UI listeners
     notifyListeners();
 
-    // TODO: In Phase 2, add cloud sync trigger here
+    // 5. Trigger debounced cloud sync (if logged in)
+    _markSyncPending();
   }
 
   Future<void> _saveTheme() async {
