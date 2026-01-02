@@ -30,6 +30,10 @@ class AppState extends ChangeNotifier {
   int _dataVersion = 0; // Server version number
   bool _isSyncing = false; // Prevent concurrent syncs
 
+  // Mutation queue to prevent race conditions
+  bool _isMutating = false;
+  final List<Function> _mutationQueue = [];
+
   // Getters for the current space
   Space get currentSpace => _spaces.firstWhere(
         (s) => s.id == _currentSpaceId,
@@ -270,7 +274,7 @@ class AppState extends ChangeNotifier {
   // ============================================================================
 
   /// Login user with email and auth token
-  /// SPECIAL CASE: If local DB is empty, pulls from cloud (new device login)
+  /// ONLY pulls from cloud if local DB is empty (new device login)
   Future<void> login(String email, String token) async {
     _isLoggedIn = true;
     _userEmail = email;
@@ -284,10 +288,16 @@ class AppState extends ChangeNotifier {
 
     notifyListeners();
 
-    // ✅ ALWAYS Pull from cloud on login
-    // This ensures the app starts with correct server data
-    debugPrint('📥 Login successful, pulling from cloud...');
-    await _pullFromCloud();
+    // ✅ ONLY Pull from cloud if local DB is empty (new device login)
+    if (_isLocalDatabaseEmpty()) {
+      debugPrint('📥 New device login detected, pulling from cloud...');
+      await _pullFromCloud();
+    } else {
+      debugPrint('✅ Existing user login - preserving local data');
+      debugPrint('🔄 Sync will happen automatically via debounced push');
+      // Trigger a sync to push any local changes
+      _markSyncPending();
+    }
   }
 
   /// Register user with email and auth token
@@ -549,8 +559,6 @@ class AppState extends ChangeNotifier {
 
       debugPrint('Received data from cloud, version: $version');
 
-      debugPrint('Received data from cloud, version: $version');
-
       // Apply the data
       await _applySyncData(data, version);
     } catch (e) {
@@ -560,52 +568,69 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Appply data from server to local state (Overwrite)
+  /// Apply data from server to local state (Overwrite)
   Future<void> _applySyncData(Map<String, dynamic> data, int? version) async {
-    // ⚠️ STEP 1: Clear local database completely
-    _spaces.clear();
-    debugPrint('🗑️ Local DB cleared');
+    // ✅ STEP 1: Validate server data first
+    if (!data.containsKey('spaces')) {
+      debugPrint('⚠️ Server data missing spaces, keeping local data');
+      setSyncError('Invalid server data');
+      return;
+    }
 
-    // ⚠️ STEP 2: Replace with remote data (NEVER merge)
-    if (data.containsKey('spaces')) {
+    // Create backup before clearing
+    final backup = List<Space>.from(_spaces);
+
+    try {
+      // ⚠️ STEP 2: Clear local database
+      _spaces.clear();
+      debugPrint('🗑️ Local DB cleared');
+
+      // ⚠️ STEP 3: Replace with remote data (NEVER merge)
       final List<dynamic> spacesData = data['spaces'] as List<dynamic>;
       _spaces = spacesData.map((json) => Space.fromJson(json)).toList();
       debugPrint('📥 Loaded ${_spaces.length} spaces from cloud');
+
+      // Restore other settings
+      if (data.containsKey('currentSpaceId')) {
+        _currentSpaceId = data['currentSpaceId'] as String;
+      } else if (_spaces.isNotEmpty) {
+        _currentSpaceId = _spaces.first.id;
+      }
+
+      if (data.containsKey('themeColor')) {
+        _themeColor = data['themeColor'] as String;
+      }
+
+      if (data.containsKey('isDarkMode')) {
+        _isDarkMode = data['isDarkMode'] as bool;
+      }
+
+      // Update version from server
+      if (version != null) {
+        _dataVersion = version;
+      }
+
+      // Update lastModifiedAt to current time
+      _lastModifiedAt = DateTime.now().millisecondsSinceEpoch;
+
+      // Save to local storage
+      await _saveData();
+
+      // Mark as synced
+      setSynced();
+      debugPrint(
+          '✅ Data applied successfully! Version: $_dataVersion, Spaces: ${_spaces.length}');
+
+      // Notify UI
+      notifyListeners();
+    } catch (e) {
+      // Restore backup on error
+      debugPrint('❌ Error applying sync data: $e');
+      debugPrint('🔄 Restoring backup...');
+      _spaces = backup;
+      setSyncError('Failed to apply server data: $e');
+      notifyListeners();
     }
-
-    // Restore other settings
-    if (data.containsKey('currentSpaceId')) {
-      _currentSpaceId = data['currentSpaceId'] as String;
-    } else if (_spaces.isNotEmpty) {
-      _currentSpaceId = _spaces.first.id;
-    }
-
-    if (data.containsKey('themeColor')) {
-      _themeColor = data['themeColor'] as String;
-    }
-
-    if (data.containsKey('isDarkMode')) {
-      _isDarkMode = data['isDarkMode'] as bool;
-    }
-
-    // Update version from server
-    if (version != null) {
-      _dataVersion = version;
-    }
-
-    // Update lastModifiedAt to current time
-    _lastModifiedAt = DateTime.now().millisecondsSinceEpoch;
-
-    // Save to local storage
-    await _saveData();
-
-    // Mark as synced
-    setSynced();
-    debugPrint(
-        '✅ Data applied successfully! Version: $_dataVersion, Spaces: ${_spaces.length}');
-
-    // Notify UI
-    notifyListeners();
   }
 
   // ============================================================================
@@ -623,20 +648,39 @@ class AppState extends ChangeNotifier {
   ///
   /// This makes cloud sync trivial later - just add sync logic here!
   Future<void> mutateData(Function action) async {
-    // 1. Execute the mutation action
-    action();
+    // Queue mutations if one is already in progress
+    if (_isMutating) {
+      debugPrint('⚠️ Mutation in progress, queuing...');
+      _mutationQueue.add(action);
+      return;
+    }
 
-    // 2. Update timestamp and mark as needing sync
-    _updateLastModified();
+    _isMutating = true;
 
-    // 3. Persist to local storage
-    await _saveData();
+    try {
+      // 1. Execute the mutation action
+      action();
 
-    // 4. Notify UI listeners
-    notifyListeners();
+      // 2. Update timestamp and mark as needing sync
+      _updateLastModified();
 
-    // 5. Trigger debounced cloud sync (if logged in)
-    _markSyncPending();
+      // 3. Persist to local storage
+      await _saveData();
+
+      // 4. Notify UI listeners
+      notifyListeners();
+
+      // 5. Trigger debounced cloud sync (if logged in)
+      _markSyncPending();
+    } finally {
+      _isMutating = false;
+
+      // Process queued mutations
+      if (_mutationQueue.isNotEmpty) {
+        final nextAction = _mutationQueue.removeAt(0);
+        await mutateData(nextAction);
+      }
+    }
   }
 
   Future<void> _saveTheme() async {
