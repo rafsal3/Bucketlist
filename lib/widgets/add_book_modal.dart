@@ -5,11 +5,11 @@ import '../services/open_library_service.dart';
 import '../models/open_library_book.dart';
 
 class AddBookModal extends StatefulWidget {
-  final String categoryId;
+  final String? categoryId;
 
   const AddBookModal({
     super.key,
-    required this.categoryId,
+    this.categoryId,
   });
 
   @override

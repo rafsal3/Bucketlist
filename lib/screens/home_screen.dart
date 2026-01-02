@@ -478,13 +478,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     InkWell(
                       onTap: () {
                         Navigator.pop(context);
-                        // Use current category ID instead of default movies category
+                        // Pass null if no category selected - will add as uncategorized
                         showModalBottomSheet(
                           context: context,
                           isScrollControlled: true,
                           backgroundColor: Colors.transparent,
                           builder: (context) => AddMovieModal(
-                            categoryId: currentCategoryId ?? 'default_movies',
+                            categoryId: currentCategoryId,
                           ),
                         );
                       },
@@ -556,13 +556,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     InkWell(
                       onTap: () {
                         Navigator.pop(context);
-                        // Use current category ID instead of default books category
+                        // Pass null if no category selected - will add as uncategorized
                         showModalBottomSheet(
                           context: context,
                           isScrollControlled: true,
                           backgroundColor: Colors.transparent,
                           builder: (context) => AddBookModal(
-                            categoryId: currentCategoryId ?? 'default_books',
+                            categoryId: currentCategoryId,
                           ),
                         );
                       },

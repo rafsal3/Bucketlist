@@ -5,11 +5,11 @@ import '../services/tmdb_service.dart';
 import '../models/tmdb_movie.dart';
 
 class AddMovieModal extends StatefulWidget {
-  final String categoryId;
+  final String? categoryId;
 
   const AddMovieModal({
     super.key,
-    required this.categoryId,
+    this.categoryId,
   });
 
   @override
