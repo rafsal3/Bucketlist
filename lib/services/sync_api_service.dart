@@ -52,6 +52,7 @@ class SyncApiService {
         return RegisterResponse(
           token: json['token'],
           userId: json['userId'] ?? json['email'],
+          version: json['version'] as int? ?? 1, // Default to 1 if not provided
         );
       } else {
         final error = jsonDecode(response.body);
@@ -184,8 +185,13 @@ class SyncApiService {
 class RegisterResponse {
   final String token;
   final String userId;
+  final int version;
 
-  RegisterResponse({required this.token, required this.userId});
+  RegisterResponse({
+    required this.token,
+    required this.userId,
+    this.version = 1,
+  });
 }
 
 class RestoreResponse {

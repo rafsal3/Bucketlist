@@ -371,12 +371,14 @@ class AppState extends ChangeNotifier {
       _isLoggedIn = true;
       _userEmail = email;
       _authToken = response.token;
+      _dataVersion = response.version; // Update version from server response
 
       // Persist authentication state
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
       await prefs.setString('userEmail', email);
       await prefs.setString('authToken', response.token);
+      await prefs.setInt('dataVersion', _dataVersion); // Persist version
 
       // User is now authenticated with backup
       notifyListeners();
