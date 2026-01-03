@@ -1,0 +1,22 @@
+
+Running Gradle task 'assembleDebug'...                          
+e: file:///E:/funCODING/flutapp/flutter_application_1/android/app/src/main/kotlin/com/example/flutter_application_1/TodoListFactory.kt:57:17 Type mismatch: inferred type is Uri! but Context was expected
+e: file:///E:/funCODING/flutapp/flutter_application_1/android/app/src/main/kotlin/com/example/flutter_application_1/TodoListFactory.kt:59:70 Type mismatch: inferred type is PendingIntent but Intent! was expected
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+
+* Get more help at https://help.gradle.org
+
+BUILD FAILED in 2s
+Running Gradle task 'assembleDebug'...                              3.3s
+Gradle task assembleDebug failed with exit code 1

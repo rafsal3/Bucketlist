@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
+import android.net.Uri
+import es.antonborri.home_widget.HomeWidgetBackgroundIntent
 import es.antonborri.home_widget.HomeWidgetPlugin
 import org.json.JSONArray
 import org.json.JSONException
@@ -40,6 +42,7 @@ class TodoListFactory(private val context: Context) : RemoteViewsService.RemoteV
             val item = items.getJSONObject(position)
             val title = item.getString("title")
             val isCompleted = item.getBoolean("isCompleted")
+            val id = item.getString("id")
 
             views.setTextViewText(R.id.widget_item_text, title)
 
@@ -49,8 +52,9 @@ class TodoListFactory(private val context: Context) : RemoteViewsService.RemoteV
                 views.setImageViewResource(R.id.widget_item_check, android.R.drawable.checkbox_off_background)
             }
             
-            // FillInIntent for click handling by the list view's pending intent template
-             val fillInIntent = Intent()
+            // FillInIntent for background callback
+            val fillInIntent = Intent()
+            fillInIntent.data = Uri.parse("homeWidget://updateitem?id=$id")
             views.setOnClickFillInIntent(R.id.widget_item_container, fillInIntent)
 
         } catch (e: Exception) {

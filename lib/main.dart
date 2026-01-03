@@ -7,6 +7,7 @@ import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'providers/app_state.dart';
+import 'services/home_widget_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +22,9 @@ void main() async {
 
   // Open Boxes
   await Hive.openBox<Space>('spaces');
+
+  // Initialize HomeWidget Callback
+  await HomeWidgetService.initialize();
 
   runApp(const MyApp());
 }
