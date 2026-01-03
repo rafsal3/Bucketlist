@@ -98,6 +98,7 @@ class AppState extends ChangeNotifier {
       _isDarkMode = prefs.getBool('isDarkMode') ?? false;
       _themeColor = prefs.getString('themeColor') ?? 'blue';
       _lastModifiedAt = prefs.getInt('lastModifiedAt') ?? 0;
+      _dataVersion = prefs.getInt('dataVersion') ?? 0;
 
       // Load authentication state
       _isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
@@ -199,6 +200,7 @@ class AppState extends ChangeNotifier {
       // Save Theme Settings
       await prefs.setBool('isDarkMode', _isDarkMode);
       await prefs.setString('themeColor', _themeColor);
+      await prefs.setInt('dataVersion', _dataVersion);
     } catch (e) {
       debugPrint('Error saving preferences: $e');
     }
@@ -427,10 +429,12 @@ class AppState extends ChangeNotifier {
           data: data,
         );
 
-        // Update version from server
         if (response.containsKey('version')) {
           _dataVersion = response['version'] as int;
         }
+
+        // Save the new version and auth state
+        await _savePreferences();
 
         // Mark as synced - we just pushed successfully!
         setSynced();
@@ -470,6 +474,10 @@ class AppState extends ChangeNotifier {
     // Reset sync status
     _syncStatus = SyncStatus.localOnly;
     _syncErrorMessage = null;
+    _dataVersion = 0;
+
+    // Clear data version from storage
+    prefs.remove('dataVersion');
 
     notifyListeners();
   }
@@ -560,6 +568,9 @@ class AppState extends ChangeNotifier {
       if (response.containsKey('version')) {
         _dataVersion = response['version'] as int;
       }
+
+      // Save the new version
+      await _savePreferences();
 
       // Mark as synced
       setSynced();
