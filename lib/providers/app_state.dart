@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:home_widget/home_widget.dart';
 import '../models/category_model.dart' as models;
 import '../models/space_model.dart';
 import '../models/sync_status.dart';
@@ -179,6 +180,7 @@ class AppState extends ChangeNotifier {
     }
 
     _isLoading = false;
+    _updateHomeWidget();
     notifyListeners();
 
     // ❌ REMOVED: No automatic sync on app start
@@ -237,6 +239,7 @@ class AppState extends ChangeNotifier {
             '🗑️ removing ${keysToDelete.length} deleted spaces from persistent storage');
         await box.deleteAll(keysToDelete);
       }
+      _updateHomeWidget();
     } catch (e) {
       debugPrint('Error persisting spaces to Hive: $e');
     }
@@ -760,6 +763,7 @@ class AppState extends ChangeNotifier {
 
       // Notify UI
       notifyListeners();
+      _updateHomeWidget();
     } catch (e) {
       // Restore backup on error
       debugPrint('❌ Error applying sync data: $e');
@@ -767,6 +771,52 @@ class AppState extends ChangeNotifier {
       _spaces = backup;
       setSyncError('Failed to apply server data: $e');
       notifyListeners();
+    }
+  }
+
+  /// Updates the Home Screen Widget with current data
+  Future<void> _updateHomeWidget() async {
+    try {
+      // Flatten items from current space
+      final items = <Map<String, dynamic>>[];
+
+      // Add Uncategorized Items
+      for (final item in currentSpace.uncategorizedItems) {
+        items.add({
+          'title': item.text,
+          'isCompleted': item.isCompleted,
+        });
+      }
+
+      // Add Category Items
+      for (final category in currentSpace.categories) {
+        for (final item in category.items) {
+          items.add({
+            'title': item.text,
+            'isCompleted': item.isCompleted,
+          });
+        }
+      }
+
+      // Sort: Incomplete first
+      items.sort((a, b) {
+        if (a['isCompleted'] == b['isCompleted']) return 0;
+        return a['isCompleted'] ? 1 : -1;
+      });
+
+      // Limit to 20 items for widget performance
+      final limitedItems = items.take(20).toList();
+
+      // See https://pub.dev/packages/home_widget
+      await HomeWidget.saveWidgetData('widget_data', jsonEncode(limitedItems));
+      await HomeWidget.updateWidget(
+        name: 'TodoWidgetProvider', // Must match values in native code
+        androidName: 'TodoWidgetProvider',
+        iOSName: 'TodoWidgetProvider',
+      );
+      debugPrint('📱 Home Widget updated with ${limitedItems.length} items');
+    } catch (e) {
+      debugPrint('❌ Failed to update Home Widget: $e');
     }
   }
 
