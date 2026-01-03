@@ -180,11 +180,9 @@ class AppState extends ChangeNotifier {
     _isLoading = false;
     notifyListeners();
 
-    // ✅ Immediate sync on app start (if logged in)
-    if (_isLoggedIn && _authToken != null) {
-      debugPrint('🚀 App started, triggering immediate sync...');
-      _pushToCloud();
-    }
+    // ❌ REMOVED: No automatic sync on app start
+    // ✅ Guest mode - app works offline by default
+    // User must manually click sync button to upload data
   }
 
   /// Saves ONLY non-space settings (preferences, auth, metadata)
@@ -324,7 +322,8 @@ class AppState extends ChangeNotifier {
   // ============================================================================
 
   /// Login user with email and auth token
-  /// ONLY pulls from cloud if local DB is empty (new device login)
+  /// ❌ DOES NOT automatically pull from cloud
+  /// ✅ User must manually restore if they want backup
   Future<void> login(String email, String token) async {
     _isLoggedIn = true;
     _userEmail = email;
@@ -338,19 +337,51 @@ class AppState extends ChangeNotifier {
 
     notifyListeners();
 
-    // ✅ ONLY Pull from cloud if local DB is empty (new device login)
-    if (_isLocalDatabaseEmpty()) {
-      debugPrint('📥 New device login detected, pulling from cloud...');
-      await _pullFromCloud();
-    } else {
-      debugPrint('✅ Existing user login - preserving local data');
-      debugPrint('🚀 Triggering immediate push to sync/converge...');
+    // ❌ REMOVED: No automatic pull
+    // ✅ User must manually restore if they want backup
+    debugPrint('✅ Login successful - local data preserved');
+  }
 
-      // Immediate push instead of debounced
-      await _pushToCloud();
+  /// Backup method (called during registration)
+  /// Registers user and uploads all local data as backup
+  Future<void> backupOnRegistration(String email, String password) async {
+    try {
+      // Get all local data from Hive
+      final localData = {
+        'spaces': _spaces.map((space) => space.toJson()).toList(),
+        'currentSpaceId': _currentSpaceId,
+        'themeColor': _themeColor,
+        'isDarkMode': _isDarkMode,
+      };
+
+      // Register with backup data
+      final response = await _syncApi.registerWithBackup(
+        email: email,
+        password: password,
+        data: localData,
+      );
+
+      // Save token and mark as logged in
+      _isLoggedIn = true;
+      _userEmail = email;
+      _authToken = response.token;
+
+      // Persist authentication state
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', true);
+      await prefs.setString('userEmail', email);
+      await prefs.setString('authToken', response.token);
+
+      // User is now authenticated with backup
+      notifyListeners();
+      debugPrint('✅ Backup successful - data uploaded to cloud');
+    } catch (e) {
+      debugPrint('❌ Backup failed: $e');
+      rethrow;
     }
   }
 
+  /// OLD METHOD - kept for backward compatibility with cloud_sync_screen
   /// Register user with email and auth token
   /// CRITICAL: Pushes any existing local data to server BEFORE pulling
   /// This prevents data loss when users register after creating offline content
@@ -439,25 +470,49 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Restore method (called when user wants to restore backup)
+  /// ⚠️ OVERWRITES all local data with server backup
+  Future<void> restoreFromBackup() async {
+    if (!_isLoggedIn || _authToken == null) {
+      throw Exception('User must be authenticated to restore');
+    }
+
+    try {
+      setSyncing();
+
+      // Get backup data from server
+      final backupData = await _syncApi.restore(_authToken!);
+
+      if (!backupData.hasBackup) {
+        throw Exception('No backup found on server');
+      }
+
+      debugPrint('📥 Restoring backup from server...');
+
+      // OVERWRITE local Hive with server data
+      await _applySyncData(backupData.data, backupData.version);
+
+      debugPrint('✅ Backup restored successfully!');
+    } catch (e) {
+      debugPrint('❌ Restore failed: $e');
+      setSyncError(e.toString());
+      rethrow;
+    }
+  }
+
   // ============================================================================
   // CLOUD SYNC METHODS
   // ============================================================================
 
-  /// Triggers a debounced sync to cloud
-  /// Waits 2 seconds after last change before syncing
+  /// ❌ REMOVED: No automatic debounced sync
+  /// ✅ Sync only happens when user manually clicks sync button
   void _markSyncPending() {
     // Cancel existing timer if any
     _syncDebounceTimer?.cancel();
 
-    // Only sync if logged in
-    if (!_isLoggedIn || _authToken == null) {
-      return;
-    }
-
-    // Set up new debounced timer (2 seconds)
-    _syncDebounceTimer = Timer(const Duration(seconds: 2), () {
-      _pushToCloud();
-    });
+    // ❌ REMOVED: No automatic sync
+    // User must manually click sync button
+    debugPrint('💾 Data saved locally - click cloud icon to sync');
   }
 
   /// Push local data to cloud
@@ -559,17 +614,15 @@ class AppState extends ChangeNotifier {
     debugPrint('⏸️ Sync paused. Waiting for re-login...');
   }
 
-  /// Schedule automatic retry for failed sync
+  /// ❌ REMOVED: No automatic retry
+  /// ✅ User must manually retry sync if it fails
   void _scheduleRetry() {
     // Cancel any existing retry timer
     _syncDebounceTimer?.cancel();
 
-    // Schedule retry after 30 seconds
-    debugPrint('⏰ Scheduling retry in 30 seconds...');
-    _syncDebounceTimer = Timer(const Duration(seconds: 30), () {
-      debugPrint('🔄 Retrying sync...');
-      _pushToCloud();
-    });
+    // ❌ REMOVED: No automatic retry
+    // User must manually click sync button to retry
+    debugPrint('❌ Sync failed - please try again manually');
   }
 
   /// Manually trigger sync (for pull-to-refresh, etc.)

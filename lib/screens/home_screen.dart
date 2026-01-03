@@ -640,6 +640,229 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Manual Sync Method
+  Future<void> _performSync(BuildContext context, AppState appState) async {
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Syncing to cloud...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Perform sync
+      await appState.manualSync();
+
+      // Hide loading
+      if (context.mounted) Navigator.pop(context);
+
+      // Show success
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text('✅ Synced successfully!'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) Navigator.pop(context);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(child: Text('❌ Sync failed: $e')),
+              ],
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Backup Dialog
+  Future<void> _showBackupDialog(BuildContext context) async {
+    // Navigate to cloud sync screen for registration
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CloudSyncScreen(),
+      ),
+    );
+  }
+
+  // Restore Dialog
+  Future<void> _showRestoreDialog(
+      BuildContext context, AppState appState) async {
+    if (!appState.isLoggedIn) {
+      // Show login screen first
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CloudSyncScreen(),
+        ),
+      );
+      return;
+    }
+
+    // Show warning dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning_rounded, color: Colors.orange),
+            SizedBox(width: 12),
+            Text('Warning'),
+          ],
+        ),
+        content: Text(
+          'This will DELETE all your local data and replace it with your cloud backup.\\n\\n'
+          'Are you sure you want to continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: Text('Yes, Restore'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      await _performRestore(context, appState);
+    }
+  }
+
+  // Perform Restore
+  Future<void> _performRestore(BuildContext context, AppState appState) async {
+    try {
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Restoring backup...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Perform restore
+      await appState.restoreFromBackup();
+
+      // Hide loading
+      if (context.mounted) Navigator.pop(context);
+
+      // Show success
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text('✅ Backup restored successfully!'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) Navigator.pop(context);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(child: Text('❌ Restore failed: $e')),
+              ],
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Perform Logout
+  Future<void> _performLogout(BuildContext context, AppState appState) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Logout'),
+        content: Text('Your local data will remain safe on this device.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await appState.logout();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Logged out. Your local data is safe.'),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<AppState>(
@@ -745,11 +968,108 @@ class _HomeScreenState extends State<HomeScreen> {
                                   size: 70,
                                 ),
                                 SizedBox(width: 8),
-                                // Sync Status Indicator
+                                // Manual Sync Button (only if logged in)
                                 if (appState.isLoggedIn) ...[
-                                  _buildSyncStatusIndicator(appState),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).cardColor,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Theme.of(context).dividerColor,
+                                      ),
+                                    ),
+                                    child: IconButton(
+                                      icon: Icon(
+                                        Icons.cloud_upload_rounded,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                      ),
+                                      tooltip: 'Sync to Cloud',
+                                      onPressed: () =>
+                                          _performSync(context, appState),
+                                    ),
+                                  ),
                                   SizedBox(width: 8),
                                 ],
+                                // Backup/Restore Menu
+                                PopupMenuButton<String>(
+                                  icon: Container(
+                                    padding: EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).cardColor,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Theme.of(context).dividerColor,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      Icons.more_vert_rounded,
+                                      color: Theme.of(context).iconTheme.color,
+                                    ),
+                                  ),
+                                  itemBuilder: (context) => [
+                                    if (!appState.isLoggedIn)
+                                      PopupMenuItem(
+                                        value: 'backup',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.backup_rounded),
+                                            SizedBox(width: 12),
+                                            Text('Backup to Cloud'),
+                                          ],
+                                        ),
+                                      ),
+                                    if (!appState.isLoggedIn)
+                                      PopupMenuItem(
+                                        value: 'restore',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.cloud_download_rounded),
+                                            SizedBox(width: 12),
+                                            Text('Restore from Cloud'),
+                                          ],
+                                        ),
+                                      ),
+                                    if (appState.isLoggedIn)
+                                      PopupMenuItem(
+                                        value: 'restore',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.cloud_download_rounded),
+                                            SizedBox(width: 12),
+                                            Text('Restore Backup'),
+                                          ],
+                                        ),
+                                      ),
+                                    if (appState.isLoggedIn)
+                                      PopupMenuItem(
+                                        value: 'logout',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.logout_rounded),
+                                            SizedBox(width: 12),
+                                            Text('Logout'),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                  onSelected: (value) async {
+                                    switch (value) {
+                                      case 'backup':
+                                        await _showBackupDialog(context);
+                                        break;
+                                      case 'restore':
+                                        await _showRestoreDialog(
+                                            context, appState);
+                                        break;
+                                      case 'logout':
+                                        await _performLogout(context, appState);
+                                        break;
+                                    }
+                                  },
+                                ),
+                                SizedBox(width: 8),
                                 // Settings Button
                                 Container(
                                   decoration: BoxDecoration(

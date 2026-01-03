@@ -46,7 +46,7 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
       Map<String, dynamic> response;
 
       if (_isLogin) {
-        // Login - normal flow (pull from cloud)
+        // Login - normal flow
         response = await _syncApi.login(email, password);
 
         // Extract token from response
@@ -55,32 +55,104 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
           throw Exception('No token received from server');
         }
 
-        // Login will pull from cloud
+        // Login (no auto-pull)
         await appState.login(email, token);
-      } else {
-        // Registration - special flow (push local data first, then pull)
-        response = await _syncApi.register(email, password);
 
-        // Extract token from response
-        final token = response['token'] as String?;
-        if (token == null) {
-          throw Exception('No token received from server');
+        if (mounted) {
+          Navigator.pop(context);
+
+          // Show restore confirmation dialog immediately after login
+          await Future.delayed(Duration(milliseconds: 300));
+
+          if (mounted) {
+            final shouldRestore = await showDialog<bool>(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => AlertDialog(
+                title: Row(
+                  children: [
+                    Icon(Icons.cloud_download_rounded,
+                        color: Theme.of(context).colorScheme.primary),
+                    SizedBox(width: 12),
+                    Text('Restore Backup?'),
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Would you like to restore your data from the cloud backup?',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    SizedBox(height: 16),
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning_rounded,
+                              color: Colors.orange, size: 20),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'This will replace your local data with the backup',
+                              style: TextStyle(
+                                  fontSize: 13, color: Colors.orange.shade900),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: Text('Keep Local Data'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: Text('Restore Backup'),
+                  ),
+                ],
+              ),
+            );
+
+            if (shouldRestore == true && mounted) {
+              // Perform restore
+              await _performRestore(context, appState);
+            } else {
+              // User chose to keep local data
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content:
+                      Text('Login successful! Your local data is preserved.'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+          }
         }
+      } else {
+        // Registration - use new backup method
+        // This will register and upload local data as backup
+        await appState.backupOnRegistration(email, password);
 
-        // Register with local data - this will push before pulling
-        await appState.registerWithLocalData(email, token);
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_isLogin
-                ? 'Login successful!'
-                : 'Registration successful! Syncing your data...'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Registration successful! Your data has been backed up.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -96,6 +168,69 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
         setState(() {
           _isLoading = false;
         });
+      }
+    }
+  }
+
+  Future<void> _performRestore(BuildContext context, AppState appState) async {
+    try {
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Restoring backup...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Perform restore
+      await appState.restoreFromBackup();
+
+      // Hide loading
+      if (mounted) Navigator.pop(context);
+
+      // Show success
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text('✅ Backup restored successfully!'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(child: Text('❌ Restore failed: $e')),
+              ],
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }

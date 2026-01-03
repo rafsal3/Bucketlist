@@ -1,0 +1,961 @@
+================================================================================
+                FRONTEND UPDATE INSTRUCTIONS - BACKUP/RESTORE MODEL
+================================================================================
+
+📋 OVERVIEW
+================================================================================
+
+This document provides step-by-step instructions to update your Flutter app
+from the current automatic sync model to the new manual backup/restore model.
+
+CURRENT MODEL (What you have now):
+- ❌ Automatic sync on every change
+- ❌ Continuous background synchronization
+- ❌ Data syncs immediately to server
+
+NEW MODEL (What we're building):
+- ✅ Guest mode - all data stored locally in Hive
+- ✅ Backup option - register and upload local data
+- ✅ Manual sync - user clicks cloud icon to upload
+- ✅ Restore option - download and overwrite local data
+- ✅ Offline-first - everything works without internet (except movie/book APIs)
+
+================================================================================
+📝 USER REQUIREMENTS (Original Context)
+================================================================================
+
+1. GUEST MODE
+   - When user installs app, they are in GUEST MODE
+   - All data stored in local Hive (no server interaction)
+   - User can use ALL features offline
+   - No authentication required
+
+2. BACKUP (Registration)
+   - User has a "Backup" option
+   - Same as register/authentication
+   - When user registers, local Hive data is uploaded to server
+   - This is the ONLY time initial data goes to server
+
+3. MANUAL SYNC
+   - Sync is MANUAL (not automatic)
+   - User clicks a cloud/sync icon
+   - App uploads latest changes to server
+   - No background sync
+
+4. RESTORE
+   - For existing users who want to restore backup
+   - App shows warning: "This will remove all existing local data"
+   - User confirms
+   - App downloads server data
+   - App OVERWRITES local Hive with server data
+   - This is the ONLY time app downloads data from server
+
+5. OFFLINE-FIRST
+   - All functionality works locally without internet
+   - Exception: Adding movies/books (requires external API)
+   - Only when user clicks cloud icon, data uploads to server
+
+================================================================================
+🎯 IMPLEMENTATION STEPS
+================================================================================
+
+STEP 1: UPDATE APP STATE MANAGEMENT
+================================================================================
+
+Location: lib/providers/app_state.dart (or your state management file)
+
+CHANGES NEEDED:
+1. Remove automatic sync triggers
+2. Keep all local Hive operations
+3. Add manual sync method
+4. Add backup method
+5. Add restore method
+
+WHAT TO REMOVE:
+- Any automatic sync on data changes
+- Background sync timers
+- Auto-sync after mutations
+
+WHAT TO ADD:
+```dart
+// Manual sync method (called when user clicks cloud icon)
+Future<void> manualSync() async {
+  if (!isAuthenticated) {
+    throw Exception('User must be authenticated to sync');
+  }
+  
+  // Get all local data from Hive
+  final localData = await getAllLocalData();
+  
+  // Upload to server
+  await apiService.pushData(localData, currentVersion);
+  
+  // Update local version
+  currentVersion++;
+  await saveVersionToHive(currentVersion);
+  
+  // Show success message
+  notifyListeners();
+}
+
+// Backup method (called during registration)
+Future<void> backupOnRegistration(String email, String password) async {
+  // Get all local data from Hive
+  final localData = await getAllLocalData();
+  
+  // Register with backup data
+  final response = await apiService.registerWithBackup(
+    email: email,
+    password: password,
+    data: localData,
+  );
+  
+  // Save token
+  await saveToken(response.token);
+  
+  // User is now authenticated with backup
+  isAuthenticated = true;
+  notifyListeners();
+}
+
+// Restore method (called when user wants to restore)
+Future<void> restoreFromBackup() async {
+  if (!isAuthenticated) {
+    throw Exception('User must be authenticated to restore');
+  }
+  
+  // Get backup data from server
+  final backupData = await apiService.restore();
+  
+  if (!backupData.hasBackup) {
+    throw Exception('No backup found');
+  }
+  
+  // OVERWRITE local Hive with server data
+  await clearAllLocalData();
+  await saveServerDataToHive(backupData.data);
+  await saveVersionToHive(backupData.version);
+  
+  // Reload app state
+  await loadDataFromHive();
+  notifyListeners();
+}
+```
+
+================================================================================
+STEP 2: UPDATE API SERVICE
+================================================================================
+
+Location: lib/services/api_service.dart
+
+ADD NEW METHODS:
+
+```dart
+// Register with optional backup data
+Future<RegisterResponse> registerWithBackup({
+  required String email,
+  required String password,
+  Map<String, dynamic>? data,  // Optional backup data
+}) async {
+  final response = await http.post(
+    Uri.parse('$baseUrl/auth/register'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      'email': email,
+      'password': password,
+      if (data != null) 'data': data,  // Include data if provided
+    }),
+  );
+  
+  if (response.statusCode == 201) {
+    final json = jsonDecode(response.body);
+    return RegisterResponse(
+      token: json['token'],
+      userId: json['userId'],
+    );
+  } else {
+    throw Exception('Registration failed: ${response.body}');
+  }
+}
+
+// Restore backup from server
+Future<RestoreResponse> restore() async {
+  final token = await getToken();
+  
+  final response = await http.post(
+    Uri.parse('$baseUrl/auth/restore'),
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    },
+  );
+  
+  if (response.statusCode == 200) {
+    final json = jsonDecode(response.body);
+    return RestoreResponse(
+      data: json['data'],
+      version: json['version'],
+      hasBackup: json['hasBackup'],
+      message: json['message'],
+    );
+  } else {
+    throw Exception('Restore failed: ${response.body}');
+  }
+}
+
+// Manual sync (push data)
+Future<void> pushData(Map<String, dynamic> data, int version) async {
+  final token = await getToken();
+  
+  final response = await http.post(
+    Uri.parse('$baseUrl/sync/push'),
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    },
+    body: jsonEncode({
+      'data': data,
+      'version': version,
+    }),
+  );
+  
+  if (response.statusCode != 200) {
+    throw Exception('Sync failed: ${response.body}');
+  }
+}
+```
+
+ADD RESPONSE MODELS:
+
+```dart
+class RegisterResponse {
+  final String token;
+  final String userId;
+  
+  RegisterResponse({required this.token, required this.userId});
+}
+
+class RestoreResponse {
+  final Map<String, dynamic> data;
+  final int version;
+  final bool hasBackup;
+  final String message;
+  
+  RestoreResponse({
+    required this.data,
+    required this.version,
+    required this.hasBackup,
+    required this.message,
+  });
+}
+```
+
+================================================================================
+STEP 3: UPDATE UI - HOME SCREEN
+================================================================================
+
+Location: lib/screens/home_screen.dart
+
+CHANGES NEEDED:
+
+1. REMOVE automatic sync indicators
+2. ADD cloud/sync icon button
+3. UPDATE to show guest mode vs authenticated state
+
+ADD SYNC BUTTON:
+
+```dart
+// In AppBar actions
+actions: [
+  // Show sync button only if authenticated
+  if (isAuthenticated)
+    IconButton(
+      icon: Icon(Icons.cloud_upload),
+      tooltip: 'Sync to Cloud',
+      onPressed: () async {
+        try {
+          await showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('Sync to Cloud'),
+              content: Text('Upload your latest changes to the cloud?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    await _performSync();
+                  },
+                  child: Text('Sync'),
+                ),
+              ],
+            ),
+          );
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Sync failed: $e')),
+          );
+        }
+      },
+    ),
+    
+  // Show backup/restore options
+  PopupMenuButton(
+    itemBuilder: (context) => [
+      if (!isAuthenticated)
+        PopupMenuItem(
+          value: 'backup',
+          child: Row(
+            children: [
+              Icon(Icons.backup),
+              SizedBox(width: 8),
+              Text('Backup to Cloud'),
+            ],
+          ),
+        ),
+      if (!isAuthenticated)
+        PopupMenuItem(
+          value: 'restore',
+          child: Row(
+            children: [
+              Icon(Icons.cloud_download),
+              SizedBox(width: 8),
+              Text('Restore from Cloud'),
+            ],
+          ),
+        ),
+      if (isAuthenticated)
+        PopupMenuItem(
+          value: 'restore',
+          child: Row(
+            children: [
+              Icon(Icons.cloud_download),
+              SizedBox(width: 8),
+              Text('Restore Backup'),
+            ],
+          ),
+        ),
+      if (isAuthenticated)
+        PopupMenuItem(
+          value: 'logout',
+          child: Row(
+            children: [
+              Icon(Icons.logout),
+              SizedBox(width: 8),
+              Text('Logout'),
+            ],
+          ),
+        ),
+    ],
+    onSelected: (value) async {
+      switch (value) {
+        case 'backup':
+          await _showBackupDialog();
+          break;
+        case 'restore':
+          await _showRestoreDialog();
+          break;
+        case 'logout':
+          await _performLogout();
+          break;
+      }
+    },
+  ),
+],
+```
+
+ADD HELPER METHODS:
+
+```dart
+Future<void> _performSync() async {
+  try {
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(child: CircularProgressIndicator()),
+    );
+    
+    // Perform sync
+    await Provider.of<AppState>(context, listen: false).manualSync();
+    
+    // Hide loading
+    Navigator.pop(context);
+    
+    // Show success
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('✅ Synced successfully!')),
+    );
+  } catch (e) {
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('❌ Sync failed: $e')),
+    );
+  }
+}
+
+Future<void> _showBackupDialog() async {
+  // Show registration screen
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => RegistrationScreen(isBackup: true),
+    ),
+  );
+}
+
+Future<void> _showRestoreDialog() async {
+  if (!isAuthenticated) {
+    // Show login screen first
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LoginScreen(isRestore: true),
+      ),
+    );
+    return;
+  }
+  
+  // Show warning dialog
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Row(
+        children: [
+          Icon(Icons.warning, color: Colors.orange),
+          SizedBox(width: 8),
+          Text('Warning'),
+        ],
+      ),
+      content: Text(
+        'This will DELETE all your local data and replace it with your cloud backup.\n\n'
+        'Are you sure you want to continue?'
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          child: Text('Yes, Restore'),
+        ),
+      ],
+    ),
+  );
+  
+  if (confirmed == true) {
+    await _performRestore();
+  }
+}
+
+Future<void> _performRestore() async {
+  try {
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(child: CircularProgressIndicator()),
+    );
+    
+    // Perform restore
+    await Provider.of<AppState>(context, listen: false).restoreFromBackup();
+    
+    // Hide loading
+    Navigator.pop(context);
+    
+    // Show success
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('✅ Backup restored successfully!')),
+    );
+  } catch (e) {
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('❌ Restore failed: $e')),
+    );
+  }
+}
+
+Future<void> _performLogout() async {
+  await Provider.of<AppState>(context, listen: false).logout();
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text('Logged out. Your local data is safe.')),
+  );
+}
+```
+
+================================================================================
+STEP 4: UPDATE REGISTRATION SCREEN
+================================================================================
+
+Location: lib/screens/registration_screen.dart
+
+CHANGES NEEDED:
+
+```dart
+class RegistrationScreen extends StatefulWidget {
+  final bool isBackup;  // True if this is a backup operation
+  
+  const RegistrationScreen({Key? key, this.isBackup = false}) : super(key: key);
+  
+  @override
+  _RegistrationScreenState createState() => _RegistrationScreenState();
+}
+
+class _RegistrationScreenState extends State<RegistrationScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+  
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.isBackup ? 'Backup to Cloud' : 'Register'),
+      ),
+      body: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          children: [
+            if (widget.isBackup)
+              Card(
+                color: Colors.blue.shade50,
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info, color: Colors.blue),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Your local data will be backed up to the cloud. '
+                          'You can restore it anytime on any device.',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            SizedBox(height: 16),
+            TextField(
+              controller: _emailController,
+              decoration: InputDecoration(
+                labelText: 'Email',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.emailAddress,
+            ),
+            SizedBox(height: 16),
+            TextField(
+              controller: _passwordController,
+              decoration: InputDecoration(
+                labelText: 'Password',
+                border: OutlineInputBorder(),
+              ),
+              obscureText: true,
+            ),
+            SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _handleRegister,
+                child: _isLoading
+                    ? CircularProgressIndicator()
+                    : Text(widget.isBackup ? 'Backup Now' : 'Register'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Future<void> _handleRegister() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      final appState = Provider.of<AppState>(context, listen: false);
+      
+      await appState.backupOnRegistration(
+        _emailController.text,
+        _passwordController.text,
+      );
+      
+      Navigator.pop(context);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.isBackup
+                ? '✅ Backup created successfully!'
+                : '✅ Registered successfully!',
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Registration failed: $e')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+}
+```
+
+================================================================================
+STEP 5: UPDATE LOGIN SCREEN
+================================================================================
+
+Location: lib/screens/login_screen.dart
+
+CHANGES NEEDED:
+
+```dart
+class LoginScreen extends StatefulWidget {
+  final bool isRestore;  // True if this is for restore operation
+  
+  const LoginScreen({Key? key, this.isRestore = false}) : super(key: key);
+  
+  @override
+  _LoginScreenState createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+  
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.isRestore ? 'Login to Restore' : 'Login'),
+      ),
+      body: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          children: [
+            if (widget.isRestore)
+              Card(
+                color: Colors.orange.shade50,
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning, color: Colors.orange),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'After login, you can restore your backup. '
+                          'This will replace all local data.',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            SizedBox(height: 16),
+            TextField(
+              controller: _emailController,
+              decoration: InputDecoration(
+                labelText: 'Email',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.emailAddress,
+            ),
+            SizedBox(height: 16),
+            TextField(
+              controller: _passwordController,
+              decoration: InputDecoration(
+                labelText: 'Password',
+                border: OutlineInputBorder(),
+              ),
+              obscureText: true,
+            ),
+            SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _handleLogin,
+                child: _isLoading
+                    ? CircularProgressIndicator()
+                    : Text('Login'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Future<void> _handleLogin() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      final appState = Provider.of<AppState>(context, listen: false);
+      
+      await appState.login(
+        _emailController.text,
+        _passwordController.text,
+      );
+      
+      Navigator.pop(context);
+      
+      if (widget.isRestore) {
+        // Automatically show restore dialog after login
+        await Future.delayed(Duration(milliseconds: 500));
+        _showRestoreDialog();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('✅ Logged in successfully!')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Login failed: $e')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+  
+  Future<void> _showRestoreDialog() async {
+    // Show warning and restore (same as home screen)
+    // Copy the _showRestoreDialog and _performRestore methods here
+  }
+}
+```
+
+================================================================================
+STEP 6: REMOVE AUTOMATIC SYNC
+================================================================================
+
+SEARCH AND REMOVE:
+
+1. Any code that syncs on data changes
+2. Background sync timers
+3. Auto-sync after mutations
+4. Sync on app resume
+
+EXAMPLES TO REMOVE:
+
+```dart
+// REMOVE THIS
+void addItem(Item item) {
+  items.add(item);
+  saveToHive();
+  syncToServer();  // ❌ REMOVE THIS
+}
+
+// KEEP THIS
+void addItem(Item item) {
+  items.add(item);
+  saveToHive();  // ✅ KEEP - local only
+}
+```
+
+```dart
+// REMOVE THIS
+@override
+void didChangeAppLifecycleState(AppLifecycleState state) {
+  if (state == AppLifecycleState.resumed) {
+    syncToServer();  // ❌ REMOVE THIS
+  }
+}
+```
+
+```dart
+// REMOVE THIS
+Timer.periodic(Duration(minutes: 5), (timer) {
+  syncToServer();  // ❌ REMOVE THIS
+});
+```
+
+================================================================================
+STEP 7: UPDATE GUEST MODE INDICATOR
+================================================================================
+
+ADD GUEST MODE BANNER:
+
+```dart
+// In home screen, show guest mode indicator
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: Text('Bucket List'),
+      // ... actions from Step 3
+    ),
+    body: Column(
+      children: [
+        // Guest mode banner
+        if (!isAuthenticated)
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(12),
+            color: Colors.blue.shade100,
+            child: Row(
+              children: [
+                Icon(Icons.person_outline, color: Colors.blue),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Guest Mode - Your data is stored locally',
+                    style: TextStyle(color: Colors.blue.shade900),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => _showBackupDialog(),
+                  child: Text('Backup'),
+                ),
+              ],
+            ),
+          ),
+        
+        // Rest of your UI
+        Expanded(
+          child: YourExistingContent(),
+        ),
+      ],
+    ),
+  );
+}
+```
+
+================================================================================
+STEP 8: TESTING CHECKLIST
+================================================================================
+
+TEST THESE SCENARIOS:
+
+1. GUEST MODE
+   [ ] Install app fresh
+   [ ] Add items, categories, spaces
+   [ ] Close and reopen app
+   [ ] Verify data persists locally
+   [ ] Verify no network calls made
+
+2. BACKUP (First Time)
+   [ ] Use app in guest mode
+   [ ] Add some data
+   [ ] Click "Backup"
+   [ ] Register with email/password
+   [ ] Verify data uploaded to server
+   [ ] Verify local data still intact
+
+3. MANUAL SYNC
+   [ ] Make changes locally
+   [ ] Click cloud/sync icon
+   [ ] Verify data uploaded
+   [ ] Check server has latest data
+
+4. RESTORE (New Device)
+   [ ] Install app on new device
+   [ ] Click "Restore"
+   [ ] Login
+   [ ] Confirm restore warning
+   [ ] Verify local data replaced with backup
+
+5. RESTORE (Overwrite Local)
+   [ ] Have local data
+   [ ] Click "Restore from Backup"
+   [ ] Confirm warning
+   [ ] Verify local data replaced
+
+6. OFFLINE FUNCTIONALITY
+   [ ] Turn off internet
+   [ ] Add/edit/delete items
+   [ ] Verify all features work
+   [ ] Turn on internet
+   [ ] Sync manually
+   [ ] Verify changes uploaded
+
+================================================================================
+📚 BACKEND API REFERENCE
+================================================================================
+
+BASE URL: https://offline-first-sync-backend.onrender.com
+
+1. REGISTER WITH BACKUP
+   POST /auth/register
+   Body: {
+     "email": "user@example.com",
+     "password": "password123",
+     "data": { ... }  // Optional
+   }
+   Response: {
+     "token": "...",
+     "userId": "..."
+   }
+
+2. LOGIN
+   POST /auth/login
+   Body: {
+     "email": "user@example.com",
+     "password": "password123"
+   }
+   Response: {
+     "token": "...",
+     "userId": "..."
+   }
+
+3. RESTORE
+   POST /auth/restore
+   Headers: {
+     "Authorization": "Bearer <token>"
+   }
+   Response: {
+     "data": { ... },
+     "version": 5,
+     "hasBackup": true,
+     "message": "..."
+   }
+
+4. MANUAL SYNC
+   POST /sync/push
+   Headers: {
+     "Authorization": "Bearer <token>"
+   }
+   Body: {
+     "data": { ... },
+     "version": 5
+   }
+   Response: {
+     "message": "Data synced successfully",
+     "version": 6
+   }
+
+================================================================================
+🎯 SUMMARY
+================================================================================
+
+MAIN CHANGES:
+1. Remove all automatic sync code
+2. Add manual sync button (cloud icon)
+3. Update registration to include backup data
+4. Add restore functionality with warning
+5. Add guest mode indicator
+6. Keep all local Hive operations
+
+KEY POINTS:
+- Guest mode = no backend calls
+- Backup = register with local data
+- Manual sync = user clicks cloud icon
+- Restore = overwrite local with server data
+- Offline-first = everything works locally
+
+BACKEND STATUS:
+✅ Backend is ready and deployed
+✅ All endpoints working
+✅ Backward compatible
+
+NEXT STEPS:
+1. Implement changes in order (Step 1-7)
+2. Test each scenario (Step 8)
+3. Deploy to users
+
+================================================================================

@@ -30,6 +30,66 @@ class SyncApiService {
     }
   }
 
+  /// Register with optional backup data
+  Future<RegisterResponse> registerWithBackup({
+    required String email,
+    required String password,
+    Map<String, dynamic>? data, // Optional backup data
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+          if (data != null) 'data': data, // Include data if provided
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final json = jsonDecode(response.body);
+        return RegisterResponse(
+          token: json['token'],
+          userId: json['userId'] ?? json['email'],
+        );
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['message'] ?? 'Registration failed');
+      }
+    } catch (e) {
+      throw Exception('Registration error: $e');
+    }
+  }
+
+  /// Restore backup from server
+  Future<RestoreResponse> restore(String authToken) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/restore'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        return RestoreResponse(
+          data: json['data'] ?? {},
+          version: json['version'] ?? 0,
+          hasBackup: json['hasBackup'] ?? false,
+          message: json['message'] ?? 'Restore complete',
+        );
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['message'] ?? 'Restore failed');
+      }
+    } catch (e) {
+      throw Exception('Restore error: $e');
+    }
+  }
+
   /// Login user
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
@@ -119,6 +179,27 @@ class SyncApiService {
       throw Exception('Pull error: $e');
     }
   }
+}
+
+class RegisterResponse {
+  final String token;
+  final String userId;
+
+  RegisterResponse({required this.token, required this.userId});
+}
+
+class RestoreResponse {
+  final Map<String, dynamic> data;
+  final int version;
+  final bool hasBackup;
+  final String message;
+
+  RestoreResponse({
+    required this.data,
+    required this.version,
+    required this.hasBackup,
+    required this.message,
+  });
 }
 
 class SyncConflictException implements Exception {
