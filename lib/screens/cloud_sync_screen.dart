@@ -132,8 +132,7 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
 
             // Then show success message
             if (mounted) {
-              ToastHelper.showSuccess(
-                  context, 'Login successful! Your local data is preserved.');
+              ToastHelper.showSuccess(context, 'Login successful');
             }
           }
         }
@@ -143,14 +142,14 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
         await appState.backupOnRegistration(email, password);
 
         if (mounted) {
-          ToastHelper.showSuccess(context,
-              'Registration successful! Your data has been backed up.');
+          ToastHelper.showSuccess(context, 'Registration successful');
           Navigator.pop(context);
         }
       }
     } catch (e) {
       if (mounted) {
-        ToastHelper.showError(context, 'Error: ${e.toString()}');
+        ToastHelper.showError(
+            context, e.toString().replaceAll('Exception: ', ''));
       }
     } finally {
       if (mounted) {
@@ -192,12 +191,12 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
 
       // Show success
       if (mounted) {
-        ToastHelper.showSuccess(context, 'Backup restored successfully!');
+        ToastHelper.showSuccess(context, 'Backup restored');
       }
     } catch (e) {
       if (mounted) Navigator.pop(context);
       if (mounted) {
-        ToastHelper.showError(context, 'Restore failed: $e');
+        ToastHelper.showError(context, 'Restore failed');
       }
     }
   }

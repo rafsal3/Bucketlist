@@ -1,6 +1,7 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
-/// Minimal top-aligned toast notification helper
+/// Minimal top-aligned toast notification helper with glassmorphism design
 class ToastHelper {
   static OverlayEntry? _currentToast;
 
@@ -9,8 +10,8 @@ class ToastHelper {
     _showToast(
       context,
       message,
-      icon: Icons.check_circle_rounded,
-      backgroundColor: Colors.green.shade600,
+      icon: Icons.check_circle,
+      accentColor: const Color(0xFF34C759), // iOS green
     );
   }
 
@@ -20,7 +21,7 @@ class ToastHelper {
       context,
       message,
       icon: Icons.error_rounded,
-      backgroundColor: Colors.red.shade600,
+      accentColor: const Color(0xFFFF3B30), // iOS red
     );
   }
 
@@ -30,7 +31,7 @@ class ToastHelper {
       context,
       message,
       icon: Icons.info_rounded,
-      backgroundColor: Theme.of(context).colorScheme.primary,
+      accentColor: const Color(0xFF007AFF), // iOS blue
     );
   }
 
@@ -39,7 +40,7 @@ class ToastHelper {
     BuildContext context,
     String message, {
     required IconData icon,
-    required Color backgroundColor,
+    required Color accentColor,
   }) {
     // Remove any existing toast
     _currentToast?.remove();
@@ -50,7 +51,7 @@ class ToastHelper {
       builder: (context) => _ToastWidget(
         message: message,
         icon: icon,
-        backgroundColor: backgroundColor,
+        accentColor: accentColor,
         onDismiss: () {
           _currentToast?.remove();
           _currentToast = null;
@@ -61,8 +62,8 @@ class ToastHelper {
     _currentToast = overlayEntry;
     overlay.insert(overlayEntry);
 
-    // Auto-dismiss after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
+    // Auto-dismiss after 2.5 seconds
+    Future.delayed(const Duration(milliseconds: 2500), () {
       if (_currentToast == overlayEntry) {
         overlayEntry.remove();
         _currentToast = null;
@@ -71,17 +72,17 @@ class ToastHelper {
   }
 }
 
-/// Toast widget with slide-in animation from top
+/// Toast widget with glassmorphism design and slide-in animation
 class _ToastWidget extends StatefulWidget {
   final String message;
   final IconData icon;
-  final Color backgroundColor;
+  final Color accentColor;
   final VoidCallback onDismiss;
 
   const _ToastWidget({
     required this.message,
     required this.icon,
-    required this.backgroundColor,
+    required this.accentColor,
     required this.onDismiss,
   });
 
@@ -99,12 +100,12 @@ class _ToastWidgetState extends State<_ToastWidget>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 400),
       vsync: this,
     );
 
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, -1),
+      begin: const Offset(0, -1.5),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _controller,
@@ -135,6 +136,8 @@ class _ToastWidgetState extends State<_ToastWidget>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Positioned(
       top: 0,
       left: 0,
@@ -145,56 +148,110 @@ class _ToastWidgetState extends State<_ToastWidget>
           child: SlideTransition(
             position: _slideAnimation,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Material(
-                color: Colors.transparent,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: widget.backgroundColor,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Center(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 400),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
                       ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        widget.icon,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          widget.message,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
+                      decoration: BoxDecoration(
+                        // Glassmorphism effect
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: isDark
+                              ? [
+                                  Colors.white.withOpacity(0.15),
+                                  Colors.white.withOpacity(0.05),
+                                ]
+                              : [
+                                  Colors.white.withOpacity(0.9),
+                                  Colors.white.withOpacity(0.7),
+                                ],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.2)
+                              : Colors.white.withOpacity(0.5),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                            spreadRadius: -4,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: _dismiss,
-                        child: Icon(
-                          Icons.close_rounded,
-                          color: Colors.white.withOpacity(0.8),
-                          size: 18,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Icon with accent color
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: widget.accentColor.withOpacity(0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              widget.icon,
+                              color: widget.accentColor,
+                              size: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          // Message
+                          Flexible(
+                            child: Material(
+                              color: Colors.transparent,
+                              child: Text(
+                                widget.message,
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white.withOpacity(0.95)
+                                      : Colors.black.withOpacity(0.85),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: -0.2,
+                                  decoration: TextDecoration.none,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Close button
+                          GestureDetector(
+                            onTap: _dismiss,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.white.withOpacity(0.1)
+                                    : Colors.black.withOpacity(0.05),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.close_rounded,
+                                color: isDark
+                                    ? Colors.white.withOpacity(0.6)
+                                    : Colors.black.withOpacity(0.4),
+                                size: 14,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),

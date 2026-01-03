@@ -63,7 +63,7 @@ class _AddBookModalState extends State<AddBookModal> {
     );
     Navigator.pop(context);
 
-    ToastHelper.showSuccess(context, 'Added "$title" to your bucket list');
+    ToastHelper.showSuccess(context, 'Book added');
   }
 
   @override

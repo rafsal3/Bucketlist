@@ -429,8 +429,7 @@ class _BookSearchExampleState extends State<BookSearchExample> {
                     onPressed: () {
                       // TODO: Add to bucket list
                       Navigator.pop(context);
-                      ToastHelper.showSuccess(
-                          context, 'Added "${book.title}" to bucket list');
+                      ToastHelper.showSuccess(context, 'Book added');
                     },
                     icon: const Icon(Icons.add),
                     label: const Text('Add to Bucket List'),

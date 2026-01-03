@@ -275,8 +275,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 await appState.logout();
                                 if (context.mounted) {
                                   Navigator.pop(context); // Close settings
-                                  ToastHelper.showInfo(
-                                      context, 'Logged out successfully');
+                                  ToastHelper.showInfo(context, 'Logged out');
                                 }
                               }
                             },
@@ -738,12 +737,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Show success
       if (context.mounted) {
-        ToastHelper.showSuccess(context, 'Synced successfully!');
+        ToastHelper.showSuccess(context, 'Synced');
       }
     } catch (e) {
       if (context.mounted) Navigator.pop(context);
       if (context.mounted) {
-        ToastHelper.showError(context, 'Sync failed: $e');
+        ToastHelper.showError(context, 'Sync failed');
       }
     }
   }
@@ -842,12 +841,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Show success
       if (context.mounted) {
-        ToastHelper.showSuccess(context, 'Backup restored successfully!');
+        ToastHelper.showSuccess(context, 'Backup restored');
       }
     } catch (e) {
       if (context.mounted) Navigator.pop(context);
       if (context.mounted) {
-        ToastHelper.showError(context, 'Restore failed: $e');
+        ToastHelper.showError(context, 'Restore failed');
       }
     }
   }
@@ -876,7 +875,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (confirmed == true) {
       await appState.logout();
       if (context.mounted) {
-        ToastHelper.showInfo(context, 'Logged out. Your local data is safe.');
+        ToastHelper.showInfo(context, 'Logged out');
       }
     }
   }
