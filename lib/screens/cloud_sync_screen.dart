@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../services/sync_api_service.dart';
+import '../utils/toast_helper.dart';
 
 /// Cloud Sync Authentication Screen
 /// Only shown when user is not logged in
@@ -131,13 +132,8 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
 
             // Then show success message
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content:
-                      Text('Login successful! Your local data is preserved.'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+              ToastHelper.showSuccess(
+                  context, 'Login successful! Your local data is preserved.');
             }
           }
         }
@@ -147,24 +143,14 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
         await appState.backupOnRegistration(email, password);
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                  'Registration successful! Your data has been backed up.'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          ToastHelper.showSuccess(context,
+              'Registration successful! Your data has been backed up.');
           Navigator.pop(context);
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ToastHelper.showError(context, 'Error: ${e.toString()}');
       }
     } finally {
       if (mounted) {
@@ -206,34 +192,12 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
 
       // Show success
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 12),
-                Text('✅ Backup restored successfully!'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-          ),
-        );
+        ToastHelper.showSuccess(context, 'Backup restored successfully!');
       }
     } catch (e) {
       if (mounted) Navigator.pop(context);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.error, color: Colors.white),
-                SizedBox(width: 12),
-                Expanded(child: Text('❌ Restore failed: $e')),
-              ],
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ToastHelper.showError(context, 'Restore failed: $e');
       }
     }
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/open_library_book.dart';
 import '../services/open_library_service.dart';
+import '../utils/toast_helper.dart';
 
 /// Example widget demonstrating how to search for books using Open Library API
 /// This is a reference implementation that can be integrated into the main app
@@ -428,11 +429,8 @@ class _BookSearchExampleState extends State<BookSearchExample> {
                     onPressed: () {
                       // TODO: Add to bucket list
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Added "${book.title}" to bucket list'),
-                        ),
-                      );
+                      ToastHelper.showSuccess(
+                          context, 'Added "${book.title}" to bucket list');
                     },
                     icon: const Icon(Icons.add),
                     label: const Text('Add to Bucket List'),

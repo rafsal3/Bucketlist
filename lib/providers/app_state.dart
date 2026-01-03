@@ -583,6 +583,9 @@ class AppState extends ChangeNotifier {
         // Schedule automatic retry after 30 seconds
         _scheduleRetry();
       }
+
+      // Rethrow the exception so the caller knows the sync failed
+      rethrow;
     } finally {
       _isSyncing = false;
 

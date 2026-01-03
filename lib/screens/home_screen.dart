@@ -11,6 +11,7 @@ import '../widgets/add_space_modal.dart';
 import 'manage_spaces_screen.dart';
 import '../widgets/checklist_item_card.dart';
 import '../widgets/progress_ring.dart';
+import '../utils/toast_helper.dart';
 
 import 'manage_categories_screen.dart';
 import 'customization_screen.dart';
@@ -274,11 +275,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 await appState.logout();
                                 if (context.mounted) {
                                   Navigator.pop(context); // Close settings
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Logged out successfully'),
-                                    ),
-                                  );
+                                  ToastHelper.showInfo(
+                                      context, 'Logged out successfully');
                                 }
                               }
                             },
@@ -740,34 +738,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Show success
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 12),
-                Text('✅ Synced successfully!'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-          ),
-        );
+        ToastHelper.showSuccess(context, 'Synced successfully!');
       }
     } catch (e) {
       if (context.mounted) Navigator.pop(context);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.error, color: Colors.white),
-                SizedBox(width: 12),
-                Expanded(child: Text('❌ Sync failed: $e')),
-              ],
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ToastHelper.showError(context, 'Sync failed: $e');
       }
     }
   }
@@ -866,34 +842,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Show success
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 12),
-                Text('✅ Backup restored successfully!'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-          ),
-        );
+        ToastHelper.showSuccess(context, 'Backup restored successfully!');
       }
     } catch (e) {
       if (context.mounted) Navigator.pop(context);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.error, color: Colors.white),
-                SizedBox(width: 12),
-                Expanded(child: Text('❌ Restore failed: $e')),
-              ],
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ToastHelper.showError(context, 'Restore failed: $e');
       }
     }
   }
@@ -922,11 +876,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (confirmed == true) {
       await appState.logout();
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Logged out. Your local data is safe.'),
-          ),
-        );
+        ToastHelper.showInfo(context, 'Logged out. Your local data is safe.');
       }
     }
   }

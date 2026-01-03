@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../services/open_library_service.dart';
 import '../models/open_library_book.dart';
+import '../utils/toast_helper.dart';
 
 class AddBookModal extends StatefulWidget {
   final String? categoryId;
@@ -62,12 +63,7 @@ class _AddBookModalState extends State<AddBookModal> {
     );
     Navigator.pop(context);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Added "$title" to your bucket list'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    ToastHelper.showSuccess(context, 'Added "$title" to your bucket list');
   }
 
   @override
