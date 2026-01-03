@@ -76,6 +76,9 @@ class _AddItemModalState extends State<AddItemModal> {
                 controller: _textController,
                 autofocus: true,
                 style: TextStyle(fontSize: 16),
+                maxLines: null,
+                textInputAction: TextInputAction.done,
+                keyboardType: TextInputType.multiline,
                 decoration: InputDecoration(
                   hintText: 'List',
                   hintStyle: TextStyle(
@@ -94,7 +97,8 @@ class _AddItemModalState extends State<AddItemModal> {
                     vertical: 16,
                   ),
                 ),
-                onSubmitted: (_) => _addItem(),
+                onSubmitted: (_) =>
+                    _addItem(), // Note: onSubmitted might not work with multiline in some configurations, but we'll keep it. Usually for multiline, users expect 'Enter' to be a new line, so they might need a button to submit or 'action' button on keyboard.
               ),
               SizedBox(height: 16),
 

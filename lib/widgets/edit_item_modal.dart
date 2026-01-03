@@ -86,35 +86,35 @@ class _EditItemModalState extends State<EditItemModal> {
               ),
               SizedBox(height: 16),
 
-              // Title
-              Text(
-                'Edit Item',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 16),
-
               // Item text field
               TextField(
                 controller: _textController,
                 autofocus: true,
                 style: TextStyle(fontSize: 16),
+                maxLines: null,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.done,
                 decoration: InputDecoration(
-                  labelText: 'Item Name',
-                  hintText: 'Enter item name',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  hintText: 'List',
+                  hintStyle: TextStyle(
+                    fontSize: 16,
+                    color: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.color
+                        ?.withOpacity(0.5),
                   ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(
-                    horizontal: 16,
+                    horizontal: 0,
                     vertical: 16,
                   ),
                 ),
                 onSubmitted: (_) => _saveChanges(),
               ),
-              SizedBox(height: 24),
+              SizedBox(height: 16),
 
               // Category selector
               Consumer<AppState>(
