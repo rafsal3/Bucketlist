@@ -1035,54 +1035,36 @@ class _HomeScreenState extends State<HomeScreen> {
                                       appState, visibleCategories),
                                   size: 70,
                                 ),
-                                SizedBox(width: 8),
+                                SizedBox(width: 16),
                                 // Manual Sync Button (only if logged in)
                                 if (appState.isLoggedIn) ...[
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context).cardColor,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: Theme.of(context).dividerColor,
-                                      ),
+                                  IconButton(
+                                    icon: Icon(
+                                      Icons.cloud_upload_rounded,
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
                                     ),
-                                    child: IconButton(
-                                      icon: Icon(
-                                        Icons.cloud_upload_rounded,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .primary,
-                                      ),
-                                      tooltip: 'Sync to Cloud',
-                                      onPressed: () =>
-                                          _performSync(context, appState),
-                                    ),
+                                    tooltip: 'Sync to Cloud',
+                                    onPressed: () =>
+                                        _performSync(context, appState),
+                                    iconSize: 24,
                                   ),
-                                  SizedBox(width: 8),
                                 ],
                                 // Backup/Restore Menu
                                 PopupMenuButton<String>(
-                                  icon: Container(
-                                    padding: EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context).cardColor,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: Theme.of(context).dividerColor,
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      Icons.more_vert_rounded,
-                                      color: Theme.of(context).iconTheme.color,
-                                    ),
+                                  icon: Icon(
+                                    Icons.more_vert_rounded,
+                                    color: Theme.of(context).iconTheme.color,
                                   ),
+                                  tooltip: 'More options',
                                   itemBuilder: (context) => [
                                     if (!appState.isLoggedIn)
                                       PopupMenuItem(
                                         value: 'backup',
                                         child: Row(
                                           children: [
-                                            Icon(Icons.backup_rounded),
+                                            Icon(Icons.backup_rounded,
+                                                size: 20),
                                             SizedBox(width: 12),
                                             Text('Backup to Cloud'),
                                           ],
@@ -1093,7 +1075,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                         value: 'restore',
                                         child: Row(
                                           children: [
-                                            Icon(Icons.cloud_download_rounded),
+                                            Icon(Icons.cloud_download_rounded,
+                                                size: 20),
                                             SizedBox(width: 12),
                                             Text('Restore from Cloud'),
                                           ],
@@ -1104,7 +1087,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                         value: 'restore',
                                         child: Row(
                                           children: [
-                                            Icon(Icons.cloud_download_rounded),
+                                            Icon(Icons.cloud_download_rounded,
+                                                size: 20),
                                             SizedBox(width: 12),
                                             Text('Restore Backup'),
                                           ],
@@ -1115,7 +1099,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                         value: 'logout',
                                         child: Row(
                                           children: [
-                                            Icon(Icons.logout_rounded),
+                                            Icon(Icons.logout_rounded,
+                                                size: 20),
                                             SizedBox(width: 12),
                                             Text('Logout'),
                                           ],
@@ -1137,25 +1122,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                     }
                                   },
                                 ),
-                                SizedBox(width: 8),
                                 // Settings Button
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).cardColor,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: Theme.of(context).dividerColor,
-                                    ),
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.settings_rounded,
+                                    color: Theme.of(context).iconTheme.color,
                                   ),
-                                  child: IconButton(
-                                    icon: Icon(
-                                      Icons.settings_rounded,
-                                      color: Theme.of(context).iconTheme.color,
-                                    ),
-                                    tooltip: 'Settings',
-                                    onPressed: () =>
-                                        _showSettingsModal(context),
-                                  ),
+                                  tooltip: 'Settings',
+                                  onPressed: () => _showSettingsModal(context),
+                                  iconSize: 24,
                                 ),
                               ],
                             ),
