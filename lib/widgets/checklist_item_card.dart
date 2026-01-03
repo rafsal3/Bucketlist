@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/category_model.dart';
 import '../providers/app_state.dart';
+import 'edit_item_modal.dart';
 
 class ChecklistItemCard extends StatelessWidget {
   final ChecklistItem item;
@@ -134,6 +135,29 @@ class ChecklistItemCard extends StatelessWidget {
                 },
               ),
 
+              // Edit Item - Only show for regular items (not movies/books)
+              if (item.imageUrl == null && item.description == null) ...[
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.edit_outlined, color: Colors.blue),
+                  ),
+                  title: Text(
+                    'Edit Item',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showEditModal(context);
+                  },
+                ),
+              ],
+
               // Move to Category
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -255,6 +279,15 @@ class ChecklistItemCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  void _showEditModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => EditItemModal(item: item),
     );
   }
 

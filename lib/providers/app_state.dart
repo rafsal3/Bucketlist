@@ -1106,6 +1106,76 @@ class AppState extends ChangeNotifier {
     });
   }
 
+  void updateItem(models.ChecklistItem updatedItem) {
+    mutateData(() {
+      // Check if category changed - if so, move the item
+      models.ChecklistItem? existingItem;
+      String? oldCategoryId;
+
+      // Find existing item in uncategorized items
+      final uncatIndex = currentSpace.uncategorizedItems
+          .indexWhere((item) => item.id == updatedItem.id);
+      if (uncatIndex != -1) {
+        existingItem = currentSpace.uncategorizedItems[uncatIndex];
+        oldCategoryId = null;
+      }
+
+      // If not found, find in categories
+      if (existingItem == null) {
+        for (var category in categories) {
+          final itemIndex =
+              category.items.indexWhere((item) => item.id == updatedItem.id);
+          if (itemIndex != -1) {
+            existingItem = category.items[itemIndex];
+            oldCategoryId = category.id;
+            break;
+          }
+        }
+      }
+
+      if (existingItem == null) return; // Item not found
+
+      // Check if category changed
+      if (oldCategoryId != updatedItem.categoryId) {
+        // Remove from old location
+        if (oldCategoryId == null) {
+          currentSpace.uncategorizedItems
+              .removeWhere((item) => item.id == updatedItem.id);
+        } else {
+          final oldCategory =
+              categories.firstWhere((cat) => cat.id == oldCategoryId);
+          oldCategory.items.removeWhere((item) => item.id == updatedItem.id);
+        }
+
+        // Add to new location
+        if (updatedItem.categoryId == null) {
+          currentSpace.uncategorizedItems.insert(0, updatedItem);
+        } else {
+          final newCategory =
+              categories.firstWhere((cat) => cat.id == updatedItem.categoryId);
+          newCategory.items.insert(0, updatedItem);
+        }
+      } else {
+        // Category didn't change, just update in place
+        if (oldCategoryId == null) {
+          final index = currentSpace.uncategorizedItems
+              .indexWhere((item) => item.id == updatedItem.id);
+          if (index != -1) {
+            currentSpace.uncategorizedItems[index] = updatedItem;
+          }
+        } else {
+          final category =
+              categories.firstWhere((cat) => cat.id == oldCategoryId);
+          final index =
+              category.items.indexWhere((item) => item.id == updatedItem.id);
+          if (index != -1) {
+            category.items[index] = updatedItem;
+          }
+        }
+      }
+    });
+  }
+
   void moveItemToCategory(String itemId, String? newCategoryId) {
     mutateData(() {
       models.ChecklistItem? itemToMove;
