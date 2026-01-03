@@ -59,75 +59,78 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
         await appState.login(email, token);
 
         if (mounted) {
-          Navigator.pop(context);
-
-          // Show restore confirmation dialog immediately after login
-          await Future.delayed(Duration(milliseconds: 300));
-
-          if (mounted) {
-            final shouldRestore = await showDialog<bool>(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) => AlertDialog(
-                title: Row(
-                  children: [
-                    Icon(Icons.cloud_download_rounded,
-                        color: Theme.of(context).colorScheme.primary),
-                    SizedBox(width: 12),
-                    Text('Restore Backup?'),
-                  ],
-                ),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Would you like to restore your data from the cloud backup?',
-                      style: TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                    SizedBox(height: 16),
-                    Container(
-                      padding: EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.orange.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.warning_rounded,
-                              color: Colors.orange, size: 20),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'This will replace your local data with the backup',
-                              style: TextStyle(
-                                  fontSize: 13, color: Colors.orange.shade900),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: Text('Keep Local Data'),
+          // Show restore confirmation dialog BEFORE popping the screen
+          final shouldRestore = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.cloud_download_rounded,
+                      color: Theme.of(context).colorScheme.primary),
+                  SizedBox(width: 12),
+                  Text('Restore Backup?'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Would you like to restore your data from the cloud backup?',
+                    style: TextStyle(fontWeight: FontWeight.w500),
                   ),
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: Text('Restore Backup'),
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning_rounded,
+                            color: Colors.orange, size: 20),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'This will replace your local data with the backup',
+                            style: TextStyle(
+                                fontSize: 13, color: Colors.orange.shade900),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-            );
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text('Keep Local Data'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text('Restore Backup'),
+                ),
+              ],
+            ),
+          );
 
-            if (shouldRestore == true && mounted) {
-              // Perform restore
-              await _performRestore(context, appState);
-            } else {
-              // User chose to keep local data
+          if (shouldRestore == true && mounted) {
+            // Perform restore
+            await _performRestore(context, appState);
+
+            // Pop the login screen after restore completes
+            if (mounted) Navigator.pop(context);
+          } else {
+            // User chose to keep local data
+            // Pop the login screen first
+            Navigator.pop(context);
+
+            // Then show success message
+            if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content:
