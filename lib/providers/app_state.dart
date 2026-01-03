@@ -696,7 +696,13 @@ class AppState extends ChangeNotifier {
     try {
       // ⚠️ STEP 2: Clear local database
       _spaces.clear();
-      debugPrint('🗑️ Local DB cleared');
+
+      // 🔥 CRITICAL FIX: Clear Hive box to remove old local data
+      // This prevents duplicate entries because new objects would be added with new keys
+      // while old objects (with same IDs) would remain because their IDs are in currentIds.
+      final box = Hive.box<Space>('spaces');
+      await box.clear();
+      debugPrint('🗑️ Local DB cleared (memory + Hive)');
 
       // ⚠️ STEP 3: Replace with remote data (NEVER merge)
       final List<dynamic> spacesData = data['spaces'] as List<dynamic>;
