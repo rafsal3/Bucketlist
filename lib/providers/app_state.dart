@@ -195,6 +195,10 @@ class AppState extends ChangeNotifier {
 
       // Save lastModifiedAt
       await prefs.setInt('lastModifiedAt', _lastModifiedAt);
+
+      // Save Theme Settings
+      await prefs.setBool('isDarkMode', _isDarkMode);
+      await prefs.setString('themeColor', _themeColor);
     } catch (e) {
       debugPrint('Error saving preferences: $e');
     }
