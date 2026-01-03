@@ -117,9 +117,9 @@ class _HomeScreenState extends State<HomeScreen> {
     _previousProgress = currentProgress;
   }
 
-  void _showSettingsModal(BuildContext context) {
+  void _showSettingsModal(BuildContext parentContext) {
     showModalBottomSheet(
-      context: context,
+      context: parentContext,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         decoration: BoxDecoration(
@@ -237,6 +237,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     // Show logged in status and logout option
                     return Column(
                       children: [
+                        ListTile(
+                          title: Text('Restore Backup'),
+                          subtitle: Text('Replace local data from cloud'),
+                          leading: Icon(Icons.cloud_download_rounded,
+                              color: Colors.orange),
+                          trailing: Icon(Icons.chevron_right_rounded),
+                          onTap: () async {
+                            Navigator.pop(context);
+                            await _showRestoreDialog(parentContext, appState);
+                          },
+                        ),
                         ListTile(
                           title: Text('Cloud Sync'),
                           subtitle: Text(appState.userEmail ?? 'Logged in'),
@@ -1000,77 +1011,79 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ],
                                 // Backup/Restore Menu
-                                PopupMenuButton<String>(
-                                  icon: Icon(
-                                    Icons.more_vert_rounded,
-                                    color: Theme.of(context).iconTheme.color,
+                                if (!appState.isLoggedIn)
+                                  PopupMenuButton<String>(
+                                    icon: Icon(
+                                      Icons.more_vert_rounded,
+                                      color: Theme.of(context).iconTheme.color,
+                                    ),
+                                    tooltip: 'More options',
+                                    itemBuilder: (context) => [
+                                      if (!appState.isLoggedIn)
+                                        PopupMenuItem(
+                                          value: 'backup',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.backup_rounded,
+                                                  size: 20),
+                                              SizedBox(width: 12),
+                                              Text('Backup to Cloud'),
+                                            ],
+                                          ),
+                                        ),
+                                      if (!appState.isLoggedIn)
+                                        PopupMenuItem(
+                                          value: 'restore',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.cloud_download_rounded,
+                                                  size: 20),
+                                              SizedBox(width: 12),
+                                              Text('Restore from Cloud'),
+                                            ],
+                                          ),
+                                        ),
+                                      if (appState.isLoggedIn)
+                                        PopupMenuItem(
+                                          value: 'restore',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.cloud_download_rounded,
+                                                  size: 20),
+                                              SizedBox(width: 12),
+                                              Text('Restore Backup'),
+                                            ],
+                                          ),
+                                        ),
+                                      if (appState.isLoggedIn)
+                                        PopupMenuItem(
+                                          value: 'logout',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.logout_rounded,
+                                                  size: 20),
+                                              SizedBox(width: 12),
+                                              Text('Logout'),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
+                                    onSelected: (value) async {
+                                      switch (value) {
+                                        case 'backup':
+                                          await _showBackupDialog(context);
+                                          break;
+                                        case 'restore':
+                                          await _showRestoreDialog(
+                                              context, appState);
+                                          break;
+                                        case 'logout':
+                                          await _performLogout(
+                                              context, appState);
+                                          break;
+                                      }
+                                    },
                                   ),
-                                  tooltip: 'More options',
-                                  itemBuilder: (context) => [
-                                    if (!appState.isLoggedIn)
-                                      PopupMenuItem(
-                                        value: 'backup',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.backup_rounded,
-                                                size: 20),
-                                            SizedBox(width: 12),
-                                            Text('Backup to Cloud'),
-                                          ],
-                                        ),
-                                      ),
-                                    if (!appState.isLoggedIn)
-                                      PopupMenuItem(
-                                        value: 'restore',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.cloud_download_rounded,
-                                                size: 20),
-                                            SizedBox(width: 12),
-                                            Text('Restore from Cloud'),
-                                          ],
-                                        ),
-                                      ),
-                                    if (appState.isLoggedIn)
-                                      PopupMenuItem(
-                                        value: 'restore',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.cloud_download_rounded,
-                                                size: 20),
-                                            SizedBox(width: 12),
-                                            Text('Restore Backup'),
-                                          ],
-                                        ),
-                                      ),
-                                    if (appState.isLoggedIn)
-                                      PopupMenuItem(
-                                        value: 'logout',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.logout_rounded,
-                                                size: 20),
-                                            SizedBox(width: 12),
-                                            Text('Logout'),
-                                          ],
-                                        ),
-                                      ),
-                                  ],
-                                  onSelected: (value) async {
-                                    switch (value) {
-                                      case 'backup':
-                                        await _showBackupDialog(context);
-                                        break;
-                                      case 'restore':
-                                        await _showRestoreDialog(
-                                            context, appState);
-                                        break;
-                                      case 'logout':
-                                        await _performLogout(context, appState);
-                                        break;
-                                    }
-                                  },
-                                ),
                                 // Settings Button
                                 IconButton(
                                   icon: Icon(
