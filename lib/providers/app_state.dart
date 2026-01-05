@@ -836,14 +836,15 @@ class AppState extends ChangeNotifier {
       // 2. Update timestamp and mark as needing sync
       _updateLastModified();
 
-      // 3. Persist to Hive (Fast & Safe)
+      // 3. Notify UI listeners IMMEDIATELY (Optimistic Update)
+      // This changes the UI state before async persistence to prevent glitches
+      notifyListeners();
+
+      // 4. Persist to Hive (Fast & Safe)
       await _persistSpaces();
 
-      // 4. Save metadata (current space, etc)
+      // 5. Save metadata (current space, etc)
       await _savePreferences();
-
-      // 5. Notify UI listeners
-      notifyListeners();
 
       // 6. Trigger debounced cloud sync (if logged in)
       _markSyncPending();
@@ -1098,7 +1099,6 @@ class AppState extends ChangeNotifier {
         newIndex -= 1;
       }
 
-      // Perform reorder
       final item = category.items.removeAt(oldIndex);
       category.items.insert(newIndex, item);
     });
