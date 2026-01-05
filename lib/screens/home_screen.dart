@@ -823,41 +823,17 @@ class _HomeScreenState extends State<HomeScreen> {
   // Perform Restore
   Future<void> _performRestore(BuildContext context, AppState appState) async {
     try {
-      // Show loading
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => Center(
-          child: Card(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Restoring backup...'),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-
-      // Perform restore
+      // Perform restore (AppState handles loading state internally)
       await appState.restoreFromBackup();
-
-      // Hide loading
-      if (context.mounted) Navigator.pop(context);
 
       // Show success
       if (context.mounted) {
         ToastHelper.showSuccess(context, 'Backup restored');
       }
     } catch (e) {
-      if (context.mounted) Navigator.pop(context);
       if (context.mounted) {
-        ToastHelper.showError(context, 'Restore failed');
+        ToastHelper.showError(context,
+            'Restore failed: ${e.toString().replaceAll('Exception: ', '')}');
       }
     }
   }

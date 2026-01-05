@@ -12,6 +12,8 @@ class AppState extends ChangeNotifier {
   List<Space> _spaces = [];
   String _currentSpaceId = '';
   bool _isLoading = true;
+  bool _isRestoring =
+      false; // 🔥 NEW: Tracks restore/sync operations to prevent black screen
   bool _isDarkMode = false;
   String _themeColor = 'blue'; // Default theme color
   int _lastModifiedAt = 0; // Global timestamp for sync decisions
@@ -46,7 +48,9 @@ class AppState extends ChangeNotifier {
   List<Space> get spaces => _spaces;
   List<models.Category> get categories => currentSpace.categories;
 
-  bool get isLoading => _isLoading;
+  bool get isLoading =>
+      _isLoading ||
+      _isRestoring; // 🔥 Show loading during initial load OR restore
   bool get isDarkMode => _isDarkMode;
   String get themeColor => _themeColor;
   int get lastModifiedAt => _lastModifiedAt;
@@ -492,6 +496,10 @@ class AppState extends ChangeNotifier {
     }
 
     try {
+      // 🔥 Set restoring flag to prevent black screen
+      _isRestoring = true;
+      notifyListeners(); // Immediately update UI to show loading
+
       setSyncing();
 
       // Get backup data from server
@@ -511,6 +519,10 @@ class AppState extends ChangeNotifier {
       debugPrint('❌ Restore failed: $e');
       setSyncError(e.toString());
       rethrow;
+    } finally {
+      // 🔥 Always clear restoring flag, even on error
+      _isRestoring = false;
+      notifyListeners();
     }
   }
 
@@ -666,6 +678,10 @@ class AppState extends ChangeNotifier {
       return;
     }
 
+    // 🔥 Set restoring flag to prevent black screen
+    _isRestoring = true;
+    notifyListeners();
+
     setSyncing(); // Update UI to show syncing status
 
     try {
@@ -693,6 +709,10 @@ class AppState extends ChangeNotifier {
       debugPrint('❌ Pull failed: $e');
       setSyncError(e.toString());
     } finally {
+      // 🔥 Clear restoring flag
+      _isRestoring = false;
+      notifyListeners();
+
       // 🔄 Process any pending mutations that occurred during pull
       await _processPendingMutations();
     }
@@ -709,10 +729,15 @@ class AppState extends ChangeNotifier {
 
     // Create backup before clearing
     final backup = List<Space>.from(_spaces);
+    final backupCurrentSpaceId = _currentSpaceId;
 
     try {
       // ⚠️ STEP 2: Clear local database
       _spaces.clear();
+
+      // 🔥 CRITICAL: Notify listeners BEFORE clearing Hive to ensure UI stays in loading state
+      // This prevents the UI from trying to render with empty _spaces
+      notifyListeners();
 
       // 🔥 CRITICAL FIX: Clear Hive box to remove old local data
       // This prevents duplicate entries because new objects would be added with new keys
@@ -731,6 +756,9 @@ class AppState extends ChangeNotifier {
         _currentSpaceId = data['currentSpaceId'] as String;
       } else if (_spaces.isNotEmpty) {
         _currentSpaceId = _spaces.first.id;
+      } else {
+        // Fallback: keep the backup if no spaces received
+        _currentSpaceId = backupCurrentSpaceId;
       }
 
       if (data.containsKey('themeColor')) {
@@ -758,13 +786,14 @@ class AppState extends ChangeNotifier {
       debugPrint(
           '✅ Data applied successfully! Version: $_dataVersion, Spaces: ${_spaces.length}');
 
-      // Notify UI
+      // Notify UI - data is now ready
       notifyListeners();
     } catch (e) {
       // Restore backup on error
       debugPrint('❌ Error applying sync data: $e');
       debugPrint('🔄 Restoring backup...');
       _spaces = backup;
+      _currentSpaceId = backupCurrentSpaceId;
       setSyncError('Failed to apply server data: $e');
       notifyListeners();
     }
