@@ -100,7 +100,7 @@ class _AddMovieModalState extends State<AddMovieModal> {
                   controller: _searchController,
                   decoration: InputDecoration(
                     hintText: 'Enter movie title...',
-                    prefixIcon: Icon(Icons.search),
+                    prefixIcon: Icon(Icons.movie_outlined),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

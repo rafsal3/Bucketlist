@@ -1177,7 +1177,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               height: 56,
                               alignment: Alignment.center,
                               child: Icon(
-                                Icons.search_rounded,
+                                Icons.travel_explore,
                                 color: Theme.of(context).colorScheme.onPrimary,
                                 size: 28,
                               ),

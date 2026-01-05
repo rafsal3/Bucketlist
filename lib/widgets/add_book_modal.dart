@@ -105,7 +105,7 @@ class _AddBookModalState extends State<AddBookModal> {
                   controller: _searchController,
                   decoration: InputDecoration(
                     hintText: 'Enter book title or author...',
-                    prefixIcon: Icon(Icons.search),
+                    prefixIcon: Icon(Icons.menu_book_outlined),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
