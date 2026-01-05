@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'models/category_model.dart';
 import 'models/space_model.dart';
-import 'screens/home_screen.dart';
+import 'screens/splash_screen.dart';
 // import 'widgets/book_search_example.dart'; // Import the example widget
 import 'theme/app_theme.dart';
 import 'package:provider/provider.dart';
@@ -42,7 +42,7 @@ class MyApp extends StatelessWidget {
             // Temporarily show the book search example for testing
             // Change back to HomeScreen() when done testing
             // home: const BookSearchExample(), // Testing books integration
-            home: const HomeScreen(), // Original home screen
+            home: const SplashScreen(), // Show splash screen first
             debugShowCheckedModeBanner: false,
           );
         },
