@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:confetti/confetti.dart';
+import 'package:dotted_border/dotted_border.dart';
 import '../providers/app_state.dart';
 import '../models/category_model.dart';
 import '../models/space_model.dart';
@@ -8,6 +9,7 @@ import '../widgets/add_movie_modal.dart';
 import '../widgets/add_book_modal.dart';
 import '../widgets/add_item_modal.dart';
 import '../widgets/add_space_modal.dart';
+import '../widgets/add_category_modal.dart';
 import 'manage_spaces_screen.dart';
 import '../widgets/checklist_item_card.dart';
 import '../widgets/progress_ring.dart';
@@ -1078,13 +1080,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       SliverPersistentHeader(
                         pinned: true,
                         delegate: _SliverAppBarDelegate(
-                          minHeight: 50.0,
-                          maxHeight: 50.0,
+                          minHeight: 58.0,
+                          maxHeight: 58.0,
                           child: Container(
                             color: Theme.of(context).scaffoldBackgroundColor,
-                            height: 50,
+                            height: 58,
                             child: ListView(
-                              padding: EdgeInsets.symmetric(horizontal: 24),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 4),
                               scrollDirection: Axis.horizontal,
                               children: [
                                 _buildTabChip('All', '📋', 0, context),
@@ -1099,6 +1102,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                     context,
                                   ),
                                 ],
+                                SizedBox(width: 8),
+                                _buildAddCategoryButton(context),
                               ],
                             ),
                           ),
@@ -1254,16 +1259,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ? Theme.of(context).colorScheme.primary
               : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(25),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color:
-                        Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: Offset(0, 4),
-                  ),
-                ]
-              : [],
           border: isSelected
               ? null
               : Border.all(color: Theme.of(context).dividerColor),
@@ -1287,6 +1282,49 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddCategoryButton(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => AddCategoryModal(),
+        );
+      },
+      child: DottedBorder(
+        color: Theme.of(context).colorScheme.primary,
+        strokeWidth: 2.5,
+        dashPattern: [6, 4],
+        borderType: BorderType.RRect,
+        radius: Radius.circular(25),
+        padding: EdgeInsets.zero,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.add_rounded,
+                size: 18,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Add Category',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
