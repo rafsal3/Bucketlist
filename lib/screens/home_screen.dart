@@ -885,6 +885,15 @@ class _HomeScreenState extends State<HomeScreen> {
         final visibleCategories =
             appState.categories.where((c) => !c.isHidden).toList();
 
+        // Validate and adjust _currentTabIndex if it's out of bounds
+        if (_currentTabIndex > visibleCategories.length) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            setState(() {
+              _currentTabIndex = 0; // Reset to "All" tab
+            });
+          });
+        }
+
         // Get current progress and check for confetti trigger
         final currentProgress =
             _getCurrentProgress(appState, visibleCategories);
@@ -892,7 +901,9 @@ class _HomeScreenState extends State<HomeScreen> {
         // Create a unique key for the current tab/category
         final categoryKey = _currentTabIndex == 0
             ? 'all'
-            : visibleCategories[_currentTabIndex - 1].id;
+            : (_currentTabIndex - 1 < visibleCategories.length
+                ? visibleCategories[_currentTabIndex - 1].id
+                : 'all');
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _checkAndTriggerConfetti(currentProgress, categoryKey);
